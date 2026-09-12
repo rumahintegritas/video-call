@@ -20,9 +20,9 @@
             flex-wrap: wrap;
         }
         video {
-            width: 45%;
-            max-width: 400px;
-            height: 300px;
+            width: 48%;
+            max-width: 500px;
+            height: 360px;
             background-color: #333;
             border-radius: 8px;
             object-fit: cover;
@@ -45,6 +45,13 @@
         button:hover {
             background-color: #0056b3;
         }
+        #cancel-btn {
+            background-color: #dc3545;
+            display: none; /* Sembunyikan default sebelum menelepon */
+        }
+        #cancel-btn:hover {
+            background-color: #a71d2a;
+        }
     </style>
 </head>
 <body>
@@ -52,12 +59,13 @@
     <h2>Aplikasi Video Call P2P</h2>
     
     <div>
-        <p>ID Anda: <strong id="my-id">Memuat...</strong></p>
+        <p>ID Anda: <strong id="my-id">3Nberadik</strong></p>
     </div>
 
     <div class="controls">
         <input type="text" id="peer-id-input" placeholder="Masukkan ID Teman">
         <button id="call-btn">Panggil</button>
+        <button id="cancel-btn">Batalkan / Tutup</button>
     </div>
 
     <div class="video-container">
