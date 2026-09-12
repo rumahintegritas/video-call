@@ -1,4 +1,6 @@
-const peer = new Peer();
+// Menggunakan ID kustom yang Anda inginkan
+const customId = "3Nberadik";
+const peer = new Peer(customId);
 
 let localStream;
 const localVideo = document.getElementById('local-video');
@@ -19,6 +21,15 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 
 peer.on('open', (id) => {
     myIdDisplay.innerText = id;
+});
+
+// Peringatan jika ID tersebut sudah dipakai orang lain di server global
+peer.on('error', (err) => {
+    if (err.type === 'unavailable-id') {
+        alert('Maaf, ID "3Nberadik" sudah digunakan orang lain di jaringan publik. Silakan ganti dengan kombinasi lain.');
+    } else {
+        console.error('PeerJS error:', err);
+    }
 });
 
 peer.on('call', (call) => {
