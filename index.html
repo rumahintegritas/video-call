@@ -1,50 +1,77 @@
-const peer = new Peer();
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Video Call Sederhana</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .video-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        video {
+            width: 45%;
+            max-width: 400px;
+            height: 300px;
+            background-color: #333;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
 
-let localStream;
-const localVideo = document.getElementById('local-video');
-const remoteVideo = document.getElementById('remote-video');
-const myIdDisplay = document.getElementById('my-id');
-const peerIdInput = document.getElementById('peer-id-input');
-const callBtn = document.getElementById('call-btn');
-
-navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    .then(stream => {
-        localStream = stream;
-        localVideo.srcObject = stream;
-    })
-    .catch(error => {
-        console.error('Gagal mengakses kamera/mikrofon:', error);
-        alert('Izin kamera dan mikrofon diperlukan untuk melakukan video call.');
-    });
-
-peer.on('open', (id) => {
-    myIdDisplay.innerText = id;
-});
-
-peer.on('call', (call) => {
-    call.answer(localStream);
+    <h2>Aplikasi Video Call P2P</h2>
     
-    call.on('stream', (remoteStream) => {
-        remoteVideo.srcObject = remoteStream;
-    });
-});
+    <div>
+        <p>ID Anda: <strong id="my-id">Memuat...</strong></p>
+    </div>
 
-callBtn.addEventListener('click', () => {
-    const peerIdToCall = peerIdInput.value.trim();
-    
-    if (!peerIdToCall) {
-        alert('Masukkan ID tujuan terlebih dahulu!');
-        return;
-    }
+    <div class="controls">
+        <input type="text" id="peer-id-input" placeholder="Masukkan ID Teman">
+        <button id="call-btn">Panggil</button>
+    </div>
 
-    const call = peer.call(peerIdToCall, localStream);
+    <div class="video-container">
+        <div>
+            <h3>Video Anda</h3>
+            <video id="local-video" autoplay muted playsinline></video>
+        </div>
+        <div>
+            <h3>Video Lawan Bicara</h3>
+            <video id="remote-video" autoplay playsinline></video>
+        </div>
+    </div>
 
-    call.on('stream', (remoteStream) => {
-        remoteVideo.srcObject = remoteStream;
-    });
-
-    call.on('error', (err) => {
-        console.error('Terjadi kesalahan saat memanggil:', err);
-        alert('Gagal terhubung ke ID tersebut.');
-    });
-});
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
