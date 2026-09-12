@@ -12,6 +12,22 @@
             margin: 0;
             padding: 20px;
         }
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 950px;
+            margin: 0 auto 10px auto;
+            padding: 0 10px;
+        }
+        #exit-btn {
+            background-color: #343a40;
+            font-size: 14px;
+            padding: 8px 14px;
+        }
+        #exit-btn:hover {
+            background-color: #23272b;
+        }
         .video-container {
             display: flex;
             justify-content: center;
@@ -19,16 +35,21 @@
             margin-top: 20px;
             flex-wrap: wrap;
         }
+        .video-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
         video {
-            width: 48%;
-            max-width: 500px;
-            height: 360px;
+            width: 100%;
+            max-width: 450px;
+            height: 340px;
             background-color: #333;
             border-radius: 8px;
             object-fit: cover;
         }
-        .controls {
-            margin-top: 20px;
+        .controls, .media-controls {
+            margin-top: 15px;
         }
         input, button {
             padding: 10px;
@@ -47,33 +68,48 @@
         }
         #cancel-btn {
             background-color: #dc3545;
-            display: none; /* Sembunyikan default sebelum menelepon */
+            display: none;
         }
         #cancel-btn:hover {
             background-color: #a71d2a;
+        }
+        .media-btn {
+            background-color: #6c757d;
+            font-size: 14px;
+            padding: 8px 12px;
+        }
+        .media-btn.active {
+            background-color: #28a745;
         }
     </style>
 </head>
 <body>
 
-    <h2>Aplikasi Video Call P2P</h2>
+    <div class="header-container">
+        <h2>Aplikasi Video Call P2P</h2>
+        <button id="exit-btn">Keluar Aplikasi</button>
+    </div>
     
     <div>
-        <p>ID Anda: <strong id="my-id">3Nberadik</strong></p>
+        <p>ID Anda: <strong id="my-id">Menghubungkan...</strong></p>
     </div>
 
     <div class="controls">
         <input type="text" id="peer-id-input" placeholder="Masukkan ID Teman">
         <button id="call-btn">Panggil</button>
-        <button id="cancel-btn">Batalkan / Tutup</button>
+        <button id="cancel-btn">Tutup Panggilan</button>
     </div>
 
     <div class="video-container">
-        <div>
+        <div class="video-box">
             <h3>Video Anda</h3>
             <video id="local-video" autoplay muted playsinline></video>
+            <div class="media-controls">
+                <button id="mute-btn" class="media-btn">Mute Suara</button>
+                <button id="camera-btn" class="media-btn">Matikan Kamera</button>
+            </div>
         </div>
-        <div>
+        <div class="video-box">
             <h3>Video Lawan Bicara</h3>
             <video id="remote-video" autoplay playsinline></video>
         </div>
