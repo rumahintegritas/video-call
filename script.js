@@ -1,5 +1,14 @@
-const customId = "3Nberadik";
-const peer = new Peer(customId);
+// Cek apakah ada tambahan khusus di URL, atau gunakan ID acak untuk teman/perangkat lain
+// Jika Anda mengakses link biasa, kita beri ID acak agar tidak bentrok, 
+// KECUALI jika di URL diberi "?id=3Nberadik"
+const urlParams = new URLSearchParams(window.location.search);
+const requestedId = urlParams.get('id');
+
+// Jika Anda membuka link dengan menambahkan ?id=3Nberadik di belakangnya, maka pakai itu. 
+// Jika tidak, buat ID acak 4 karakter agar teman Anda aman dari error.
+const myCustomId = requestedId ? requestedId : 'user_' + Math.random().toString(36).substring(2, 6);
+
+const peer = new Peer(myCustomId);
 
 let localStream;
 let currentCall = null;
@@ -27,13 +36,14 @@ peer.on('open', (id) => {
 
 peer.on('error', (err) => {
     if (err.type === 'unavailable-id') {
-        alert('Maaf, ID "3Nberadik" sedang digunakan oleh perangkat lain.');
+        alert('ID tersebut sedang digunakan perangkat lain. Memuat ulang dengan ID baru...');
+        window.location.reload();
     } else {
         console.error('PeerJS error:', err);
     }
 });
 
-// Saat ada panggilan masuk dari orang lain
+// Saat ada panggilan masuk
 peer.on('call', (call) => {
     currentCall = call;
     call.answer(localStream);
