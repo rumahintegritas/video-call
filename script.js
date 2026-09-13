@@ -32,41 +32,39 @@ const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 
+// Langsung muat kamera dan buat tombol pilihan ID instan di layar jika belum terpilih
 document.addEventListener("DOMContentLoaded", () => {
-    InisialisasiPilihanID();
+    muatKameraDanTampilkanPilihan();
 });
 
-// Menampilkan kotak dialog kecil agar Anda bisa memilih ID secara manual tanpa macet
-function InisialisasiPilihanID() {
-    let pilihan = prompt("Pilih ID perangkat ini:\nKetik 1 untuk: 3Nberadik\nKetik 2 untuk: 3Nkandung", "1");
-    let myChosenId = (pilihan === "2") ? "3Nkernel_kandung" : "3Nberadik"; // Atau gunakan nama unik yang pasti bebas
-    
-    // Supaya lebih simpel dan anti-bentrok, kita beri opsi teks bebas
-    if (pilihan === "2") {
-        myChosenId = "3Nkandung";
-        targetPeerId = "3Nberadik";
-    } else {
-        myChosenId = "3Nberadik";
-        targetPeerId = "3Nkandung";
-    }
-
-    myIdDisplay.innerText = "Memuat kamera...";
+function muatKameraDanTampilkanPilihan() {
+    myIdDisplay.innerText = "Meminta izin kamera...";
     
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })
         .then(stream => {
             localStream = stream;
             updateTampilanVideo();
-            hubungkanKeServerPeer(myChosenId);
+            tampilkanTombolPilihID();
         })
         .catch(err => {
-            console.warn("Kamera tidak aktif, lanjut mode audio:", err);
-            hubungkanKeServerPeer(myChosenId);
+            console.warn("Izin kamera ditolak/gagal:", err);
+            tampilkanTombolPilihID(); // Tetap lanjut agar pengguna tetap bisa memilih ID
         });
 }
 
-function hubungkanKeServerPeer(myId) {
-    myIdDisplay.innerText = `Menghubungkan ${myId}...`;
+function tampilkanTombolPilihID() {
+    myIdDisplay.innerHTML = `
+        <span style="color: #ffc107;">Pilih Perangkat:</span> 
+        <button onclick="mulaiSebagai('3Nberadik', '3Nkandung')" style="background:#28a745; padding:3px 8px; margin-left:5px; cursor:pointer;">1: 3Nberadik</button>
+        <button onclick="mulaiSebagai('3Nkandung', '3Nberadik')" style="background:#17a2b8; padding:3px 8px; margin-left:5px; cursor:pointer;">2: 3Nkandung</button>
+    `;
+}
+
+// Fungsi yang dipanggil saat tombol pilihan ID diklik
+window.mulaiSebagai = function(myId, targetId) {
+    targetPeerId = targetId;
     targetIdDisplay.innerText = targetPeerId;
+    myIdDisplay.innerText = `Menghubungkan ${myId}...`;
 
     peer = new Peer(myId, {
         host: '0.peerjs.com',
@@ -77,15 +75,16 @@ function hubungkanKeServerPeer(myId) {
     peer.on('open', (id) => {
         myIdDisplay.innerText = id;
         setupListeners();
+        alert(`Berhasil masuk sebagai: ${id}`);
     });
 
     peer.on('error', (err) => {
         console.warn('PeerJS Error:', err);
         if (err.type === 'unavailable-id') {
-            alert(`ID "${myId}" sedang aktif di tab/perangkat lain! Tutup tab tersebut atau refresh.`);
-            myIdDisplay.innerText = "ID Terpakai (Ganti Tab)";
+            alert(`ID "${myId}" sedang digunakan di tab/perangkat lain! Tutup tab tersebut.`);
+            location.reload();
         } else {
-            myIdDisplay.innerText = "Gagal Terhubung ke Server";
+            myIdDisplay.innerText = "Koneksi Gagal, Refresh Ulang";
         }
     });
 }
@@ -197,7 +196,6 @@ function setupListeners() {
             });
     });
 
-    // Tombol Keluar & Hancurkan Sesi Total
     exitBtn.addEventListener('click', () => {
         tutupSesiDanMatikan();
         window.location.reload();
