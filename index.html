@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Panggilan P2P (Gaya WhatsApp)</title>
+    <title>Aplikasi Panggilan P2P</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,7 +36,6 @@
             border: none;
             cursor: pointer;
         }
-
         .top-panel {
             background: rgba(255, 255, 255, 0.1);
             padding: 5px 10px;
@@ -49,31 +48,17 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-        input, button {
-            padding: 4px 7px;
-            font-size: 11px;
+        button {
+            padding: 5px 10px;
+            font-size: 12px;
             border-radius: 4px;
-            border: 1px solid #555;
-            background: #222;
+            border: none;
+            cursor: pointer;
             color: white;
         }
-        button { background-color: #007bff; cursor: pointer; border: none; }
-        #call-video-btn { background-color: #28a745; }
-        #call-audio-btn { background-color: #17a2b8; }
-        .media-btn { background-color: #444; }
-        .media-btn.active { background-color: #dc3545; }
-
-        /* Tombol Pilihan ID Manual */
-        .id-selector-box {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-            background: #333;
-            padding: 3px 8px;
-            border-radius: 4px;
-        }
-
-        /* Modal Panggilan Masuk */
+        #btn-beradik { background-color: #28a745; }
+        #btn-kandung { background-color: #17a2b8; }
+        
         #incoming-modal {
             display: none;
             position: fixed;
@@ -91,10 +76,9 @@
             max-width: 280px;
         }
         .modal-btn-group { margin-top: 15px; display: flex; justify-content: space-around; }
-        #accept-call-btn { background-color: #28a745; padding: 6px 12px; }
-        #reject-call-btn { background-color: #dc3545; padding: 6px 12px; }
+        #accept-call-btn { background-color: #28a745; }
+        #reject-call-btn { background-color: #dc3545; }
 
-        /* Workspace Tata Letak ala WhatsApp */
         .main-workspace {
             display: flex;
             width: 100%;
@@ -104,7 +88,6 @@
             min-height: 0;
             padding-bottom: 5px;
         }
-
         .video-container {
             flex: 2;
             position: relative;
@@ -116,14 +99,12 @@
             align-items: center;
             height: 100%;
         }
-
         .video-main {
             width: 100%;
             height: 100%;
             object-fit: cover;
             background: #111;
         }
-
         .video-floating {
             position: absolute;
             top: 12px;
@@ -153,7 +134,6 @@
             font-size: 9px;
             border-radius: 3px;
         }
-
         .floating-controls {
             position: absolute;
             bottom: 12px;
@@ -166,7 +146,6 @@
             border-radius: 20px;
             z-index: 10;
         }
-
         .chat-section {
             flex: 1;
             min-width: 220px;
@@ -177,11 +156,6 @@
             flex-direction: column;
             height: 100%;
             box-sizing: border-box;
-            transition: height 0.3s ease;
-        }
-        .chat-section.minimized {
-            height: 30px;
-            overflow: hidden;
         }
         .chat-header {
             background: #007bff;
@@ -212,9 +186,8 @@
             gap: 4px;
         }
         .chat-msg { padding: 4px 6px; border-radius: 4px; max-width: 85%; word-break: break-word; }
-        .chat-msg.mine { background: #005c4b; align-self: flex-end; color: white; }
-        .chat-msg.theirs { background: #333; align-self: flex-start; color: white; }
-        .chat-msg small { display: block; font-size: 8px; color: #aaa; margin-top: 1px; }
+        .chat-msg.mine { background: #005c4b; align-self: flex-end; }
+        .chat-msg.theirs { background: #333; align-self: flex-start; }
         .chat-input-area {
             display: flex;
             padding: 5px;
@@ -222,8 +195,8 @@
             border-bottom-left-radius: 8px;
             border-bottom-right-radius: 8px;
         }
-        .chat-input-area input { flex: 1; padding: 4px; font-size: 11px; background: #111; color: white; }
-        .chat-input-area button { padding: 4px 6px; font-size: 11px; margin-left: 3px; }
+        .chat-input-area input { flex: 1; padding: 4px; font-size: 11px; background: #111; color: white; border: 1px solid #555; }
+        .chat-input-area button { padding: 4px 6px; font-size: 11px; margin-left: 3px; background: #007bff; }
     </style>
 </head>
 <body>
@@ -240,36 +213,36 @@
     </div>
 
     <div class="header-container">
-        <h2>Aplikasi Panggilan P2P (Gaya WhatsApp)</h2>
+        <h2>Aplikasi Panggilan P2P</h2>
         <button id="exit-btn">Keluar</button>
     </div>
     
-    <div class="top-panel">
-        <div class="id-selector-box">
-            <span>Pilih ID:</span>
-            <button onclick="mulaiAplikasi('3Nberadik', '3Nkandung')" style="background-color: #28a745;">3Nberadik</button>
-            <button onclick="mulaiAplikasi('3Nkandung', '3Nberadik')" style="background-color: #17a2b8;">3Nkandung</button>
-        </div>
-        <span>Status ID: <strong id="my-id">Belum dipilih</strong></span>
+    <div class="top-panel" id="panel-pemilihan">
+        <span><strong>Pilih Perangkat Ini:</strong></span>
+        <button id="btn-beradik">Gunakan: 3Nberadik</button>
+        <button id="btn-kandung">Gunakan: 3Nkandung</button>
+    </div>
+
+    <div class="top-panel" id="panel-kontrol" style="display:none;">
+        <span>ID Anda: <strong id="my-id">-</strong></span>
         <span>Lawan: <strong id="target-id-display">-</strong></span>
-        <button id="call-video-btn" style="display:none;">Panggil Video</button>
-        <button id="call-audio-btn" style="display:none;">Panggil Suara</button>
-        <button id="hangup-btn" style="background-color: #dc3545; display:none;">Tutup</button>
+        <button id="call-video-btn" style="background:#28a745;">Panggil Video</button>
+        <button id="call-audio-btn" style="background:#17a2b8;">Panggil Suara</button>
+        <button id="hangup-btn" style="background:#dc3545; display:none;">Tutup</button>
     </div>
 
     <div class="main-workspace">
         <div class="video-container">
             <video id="main-video" class="video-main" autoplay playsinline></video>
             
-            <div class="video-floating" id="floating-box" onclick="tukarPosisiVideo()" title="Klik untuk tukar posisi">
+            <div class="video-floating" id="floating-box" onclick="tukarPosisiVideo()">
                 <video id="floating-video" autoplay muted playsinline></video>
                 <div class="video-label" id="floating-label">Anda</div>
             </div>
 
             <div class="floating-controls">
-                <button id="mute-btn" class="media-btn">Mute</button>
-                <button id="camera-btn" class="media-btn">Kamera</button>
-                <button id="switch-camera-btn" class="media-btn">Putar</button>
+                <button id="mute-btn" class="media-btn" style="background:#444;">Mute</button>
+                <button id="camera-btn" class="media-btn" style="background:#444;">Kamera</button>
             </div>
         </div>
 
