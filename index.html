@@ -14,9 +14,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100dvh; /* Menggunakan dvh agar aman di tablet/mobile */
+            min-height: 100dvh;
             box-sizing: border-box;
-            overflow: hidden;
+            overflow-x: hidden;
         }
         .top-panel {
             background: rgba(255, 255, 255, 0.1);
@@ -59,7 +59,7 @@
             max-width: 950px;
             flex: 1;
             gap: 8px;
-            min-height: 0; /* Penting agar flex item bisa mengecil dengan benar di tablet */
+            min-height: 0;
             padding-bottom: 4px;
             flex-direction: row;
             box-sizing: border-box;
@@ -74,7 +74,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 120px;
+            min-height: 150px;
         }
         .video-main {
             width: 100%;
@@ -141,7 +141,7 @@
             flex-direction: column;
             overflow: hidden;
             min-width: 180px;
-            min-height: 0; /* Mencegah chat meluber keluar batas layar tablet */
+            min-height: 220px;
         }
         .chat-messages {
             flex: 1;
@@ -176,17 +176,31 @@
             display: flex;
             padding: 5px;
             background: #2a2a2a;
-            flex-shrink: 0; /* Menjaga tombol kirim agar tidak ikut mengecil/terpotong */
+            flex-shrink: 0;
         }
         .chat-input-area input { flex: 1; padding: 5px; background: #111; color: white; border: 1px solid #555; border-radius: 4px; font-size: 11px; min-width: 0; }
         .chat-input-area button { background: #007bff; margin-left: 4px; padding: 5px 8px; font-size: 11px; }
 
-        /* Penyesuaian Tablet & HP */
+        /* Penyesuaian Khusus Tablet & HP */
         @media (max-width: 1024px) {
-            body { padding: 2px; }
-            .main-workspace { flex-direction: column; }
-            .video-container { flex: 1.1; min-height: 140px; }
-            .chat-section { flex: 1; min-height: 100px; }
+            body { 
+                padding: 2px; 
+                overflow-y: auto; /* Mengizinkan scroll vertikal jika layar tablet kurang tinggi */
+            }
+            .main-workspace { 
+                flex-direction: column; 
+                height: auto;
+            }
+            .video-container { 
+                width: 100%;
+                height: 240px; 
+                flex: none; 
+            }
+            .chat-section { 
+                width: 100%;
+                height: 300px; 
+                flex: none; 
+            }
         }
     </style>
 </head>
