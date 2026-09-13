@@ -28,47 +28,15 @@ const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 
-// Jalankan inisialisasi dengan pengaman error
+// Jalankan sistem langsung dari ID PeerJS terlebih dahulu
 document.addEventListener("DOMContentLoaded", () => {
-    inisialisasiKameraDanPeer(true);
+    cariDanHubungkanID(0);
 });
-
-function inisialisasiKameraAndPeer(isFirstTime = false, videoEnabled = true) {
-    myIdDisplay.innerText = "Meminta izin kamera...";
-    
-    const constraints = {
-        video: videoEnabled ? { facingMode: useFrontCamera ? 'user' : 'environment' } : false,
-        audio: true
-    };
-
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-            if (localStream) {
-                localStream.getTracks().forEach(t => t.stop());
-            }
-            localStream = stream;
-            const localVideo = document.getElementById('local-video');
-            localVideo.srcObject = stream;
-            
-            if (isFirstTime) {
-                cariDanHubungkanID(0);
-            } else if (currentCall) {
-                const videoTrack = localStream.getVideoTracks()[0];
-                const sender = currentCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                if (sender && videoTrack) sender.replaceTrack(videoTrack);
-            }
-        })
-        .catch(error => {
-            console.error('Gagal akses media:', error);
-            myIdDisplay.innerText = "Izin Kamera Ditolak!";
-            alert('Izin kamera dan mikrofon wajib diizinkan pada pengaturan browser Anda.');
-        });
-}
 
 function cariDanHubungkanID(index) {
     if (index >= FIXED_IDS.length) {
         myIdDisplay.innerText = "Slot Penuh";
-        alert('Kedua ID (3Nberadik & 3Nkandung) sedang digunakan perangkat lain!');
+        alert('Kedua ID (3Nberadik & 3Nkandung) sedang digunakan!');
         return;
     }
 
@@ -83,7 +51,9 @@ function cariDanHubungkanID(index) {
     peer.on('open', (id) => {
         myIdDisplay.innerText = id;
         labelMyId.innerText = id;
-        setupListeners();
+        
+        // Setelah ID berhasil didapat, baru aktifkan kamera
+        aktifkanKameraDanSetup(true);
     });
 
     peer.on('error', (err) => {
@@ -92,9 +62,33 @@ function cariDanHubungkanID(index) {
             peer.destroy();
             cariDanHubungkanID(index + 1); 
         } else {
-            myIdDisplay.innerText = "Koneksi Gagal (Coba Refresh)";
+            myIdDisplay.innerText = "Koneksi Gagal";
         }
     });
+}
+
+function aktifkanKameraDanSetup(videoEnabled = true) {
+    const constraints = {
+        video: videoEnabled ? { facingMode: useFrontCamera ? 'user' : 'environment' } : false,
+        audio: true
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+            }
+            localStream = stream;
+            const localVideo = document.getElementById('local-video');
+            localVideo.srcObject = stream;
+            
+            setupListeners();
+        })
+        .catch(error => {
+            console.error('Gagal akses media:', error);
+            alert('Izin kamera/mikrofon diperlukan agar video call dapat berjalan.');
+            setupListeners(); // Tetap jalankan listener agar chat dan tombol tetap aktif
+        });
 }
 
 function setupListeners() {
@@ -131,7 +125,7 @@ function setupListeners() {
     });
 
     callAudioBtn.addEventListener('click', () => {
-        inisialisasiKameraAndPeer(false, false);
+        aktifkanKameraDanSetup(false);
         setTimeout(() => mulaiPanggilan(false), 500);
     });
 
@@ -148,6 +142,7 @@ function setupListeners() {
     });
 
     muteBtn.addEventListener('click', () => {
+        if (!localStream) return;
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack) {
             audioTrack.enabled = !audioTrack.enabled;
@@ -157,6 +152,7 @@ function setupListeners() {
     });
 
     cameraBtn.addEventListener('click', () => {
+        if (!localStream) return;
         const videoTrack = localStream.getVideoTracks()[0];
         if (videoTrack) {
             videoTrack.enabled = !videoTrack.enabled;
@@ -168,7 +164,7 @@ function setupListeners() {
     switchCameraBtn.addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
         switchCameraBtn.innerText = useFrontCamera ? "Putar" : "Depan";
-        inisialisasiKameraAndPeer(false, true);
+        aktifkanKameraDanSetup(true);
     });
 
     exitBtn.addEventListener('click', () => {
@@ -244,7 +240,7 @@ function kirimPesanChat() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    tampilkanPesanCachePesan('Anda', text, 'mine');
+    tampilkanPesanChat('Anda', text, 'mine');
 
     if (activeConnection) {
         activeConnection.send(text);
@@ -266,11 +262,6 @@ function tampilkanPesanChat(sender, text, type) {
     msgDiv.innerHTML = `<strong>${sender}</strong>: ${text} <small>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>`;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Alias pencegah error ketik
-function tampilkanPesanCachePesan(sender, text, type) {
-    tampilkanPesanChat(sender, text, type);
 }
 
 function tampilkanKotakLawanBicara(peerId, stream) {
