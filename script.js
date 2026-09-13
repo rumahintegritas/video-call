@@ -3,8 +3,9 @@ let peer = null;
 let localStream = null;
 let screenStream = null;
 let activeCalls = {}; 
+let activeConnections = {}; // Menyimpan koneksi data chat
 let pendingCall = null;
-let useFrontCamera = true; // Status kamera depan/belakang
+let useFrontCamera = true;
 
 const myIdDisplay = document.getElementById('my-id');
 const labelMyId = document.getElementById('label-my-id');
@@ -24,7 +25,10 @@ const incomingCallerId = document.getElementById('incoming-caller-id');
 const acceptCallBtn = document.getElementById('accept-call-btn');
 const rejectCallBtn = document.getElementById('reject-call-btn');
 
-// Inisialisasi Akses Kamera Pertama Kali
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const sendChatBtn = document.getElementById('send-chat-btn');
+
 inisialisasiKameraAndPeer(true);
 
 function inisialisasiKameraAndPeer(isFirstTime = false) {
@@ -36,7 +40,6 @@ function inisialisasiKameraAndPeer(isFirstTime = false) {
     navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
             if (localStream) {
-                // Hentikan stream lama jika ini proses switch kamera
                 localStream.getTracks().forEach(t => t.stop());
             }
             localStream = stream;
@@ -46,7 +49,6 @@ function inisialisasiKameraAndPeer(isFirstTime = false) {
             if (isFirstTime) {
                 cariDanHubungkanID(0);
             } else {
-                // Perbarui stream video untuk semua panggilan aktif saat kamera diputar
                 const videoTrack = localStream.getVideoTracks()[0];
                 for (let peerId in activeCalls) {
                     const call = activeCalls[peerId];
@@ -56,15 +58,15 @@ function inisialisasiKameraAndPeer(isFirstTime = false) {
             }
         })
         .catch(error => {
-            console.error('Gagal mengakses kamera/mikrofon:', error);
+            console.error('Gagal akses kamera:', error);
             alert('Izin kamera dan mikrofon wajib diaktifkan.');
         });
 }
 
 function cariDanHubungkanID(index) {
     if (index >= AVAILABLE_IDS.length) {
-        alert('Seluruh 6 slot ID sedang penuh digunakan!');
-        myIdDisplay.innerText = "Slot Penuh";
+        alert('Seluruh 6 slot ID penuh!');
+        myIdDisplay.innerText = "Penuh";
         return;
     }
 
@@ -90,12 +92,17 @@ function cariDanHubungkanID(index) {
 }
 
 function setupListeners() {
-    // Tangani panggilan masuk dengan memunculkan modal Terima/Tolak
+    // Panggilan Video Masuk
     peer.on('call', (call) => {
         pendingCall = call;
         incomingCallerId.innerText = call.peer;
         incomingModal.style.display = 'flex';
         bunyikanNadaDering();
+    });
+
+    // Koneksi Data Chat Masuk
+    peer.on('connection', (conn) => {
+        setupDataConnection(conn);
     });
 
     acceptCallBtn.onclick = () => {
@@ -117,34 +124,36 @@ function setupListeners() {
 
     callBtn.addEventListener('click', () => {
         const targetId = peerIdInput.value.trim();
-        if (!targetId) {
-            alert('Masukkan ID peserta tujuan!');
-            return;
-        }
-        if (targetId === peer.id) {
-            alert('Tidak dapat memanggil ID sendiri.');
-            return;
-        }
-        if (activeCalls[targetId]) {
-            alert('Sudah terhubung dengan ID tersebut.');
+        if (!targetId || targetId === peer.id) {
+            alert('Masukkan ID tujuan yang valid!');
             return;
         }
 
-        const call = peer.call(targetId, localStream);
-        handleIncomingCall(call);
+        // 1. Hubungkan Video Call
+        if (!activeCalls[targetId]) {
+            const call = peer.call(targetId, localStream);
+            handleIncomingCall(call);
+        }
+
+        // 2. Hubungkan Data Chat (DataConnection)
+        if (!activeConnections[targetId]) {
+            const conn = peer.connect(targetId);
+            setupDataConnection(conn);
+        }
+    });
+
+    // Kirim Pesan Chat
+    sendChatBtn.addEventListener('click', kirimPesanChat);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') kirimPesanChat();
     });
 
     muteBtn.addEventListener('click', () => {
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack) {
             audioTrack.enabled = !audioTrack.enabled;
-            if (audioTrack.enabled) {
-                muteBtn.innerText = "Mute Suara";
-                muteBtn.classList.remove('active');
-            } else {
-                muteBtn.innerText = "Unmute Suara";
-                muteBtn.classList.add('active');
-            }
+            muteBtn.innerText = audioTrack.enabled ? "Mute" : "Unmute";
+            muteBtn.classList.toggle('active', !audioTrack.enabled);
         }
     });
 
@@ -152,20 +161,14 @@ function setupListeners() {
         const videoTrack = localStream.getVideoTracks()[0];
         if (videoTrack) {
             videoTrack.enabled = !videoTrack.enabled;
-            if (videoTrack.enabled) {
-                cameraBtn.innerText = "Matikan Kamera";
-                cameraBtn.classList.remove('active');
-            } else {
-                cameraBtn.innerText = "Nyalakan Kamera";
-                cameraBtn.classList.add('active');
-            }
+            cameraBtn.innerText = videoTrack.enabled ? "Kamera" : "Buka";
+            cameraBtn.classList.toggle('active', !videoTrack.enabled);
         }
     });
 
-    // Fitur Putar Kamera (Depan / Belakang)
     switchCameraBtn.addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
-        switchCameraBtn.innerText = useFrontCamera ? "Kamera Belakang" : "Kamera Depan";
+        switchCameraBtn.innerText = useFrontCamera ? "Putar" : "Depan";
         inisialisasiKameraAndPeer(false);
     });
 
@@ -184,18 +187,15 @@ function setupListeners() {
                 presentationVideo.srcObject = screenStream;
                 presentationTitle.innerText = `Paparan Anda (${peer.id})`;
                 presentationContainer.classList.add('active');
-
-                shareScreenBtn.innerText = "Hentikan Paparan";
+                shareScreenBtn.innerText = "Stop";
                 shareScreenBtn.classList.add('active');
 
-                screenTrack.onended = () => {
-                    hentikanScreenSharing();
-                };
+                screenTrack.onended = () => hentikanScreenSharing();
             } else {
                 hentikanScreenSharing();
             }
         } catch (err) {
-            console.error('Gagal berbagi layar:', err);
+            console.error('Gagal screen share:', err);
         }
     });
 
@@ -207,12 +207,49 @@ function setupListeners() {
 
         document.body.innerHTML = `
             <div style="font-family: Arial; text-align: center; margin-top: 100px;">
-                <h2>Anda telah keluar dari ruang rapat.</h2>
-                <p>Kamera dan mikrofon telah dimatikan.</p>
-                <button onclick="window.location.reload()" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">Masuk Kembali</button>
+                <h2>Keluar Rapat</h2>
+                <p>Kamera & mikrofon dimatikan.</p>
+                <button onclick="window.location.reload()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Masuk Lagi</button>
             </div>
         `;
     });
+}
+
+function setupDataConnection(conn) {
+    activeConnections[conn.peer] = conn;
+
+    conn.on('data', (data) => {
+        tampilkanPesanChat(conn.peer, data, 'theirs');
+    });
+
+    conn.on('close', () => {
+        delete activeConnections[conn.peer];
+    });
+}
+
+function kirimPesanChat() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    tampilkanPesanChat('Anda', text, 'mine');
+
+    // Kirim pesan ke semua peserta yang terhubung
+    for (let peerId in activeConnections) {
+        activeConnections[peerId].send(text);
+    }
+
+    chatInput.value = '';
+}
+
+function tampilkanPesanChat(sender, text, type) {
+    if (chatMessages.innerHTML.includes('Belum ada pesan')) {
+        chatMessages.innerHTML = '';
+    }
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `chat-msg ${type}`;
+    msgDiv.innerHTML = `<strong>${sender}</strong>: ${text} <small>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>`;
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function handleIncomingCall(call) {
@@ -223,12 +260,6 @@ function handleIncomingCall(call) {
     });
 
     call.on('close', () => {
-        hapusKotakVideo(call.peer);
-        delete activeCalls[call.peer];
-    });
-
-    call.on('error', (err) => {
-        console.error('Koneksi error:', err);
         hapusKotakVideo(call.peer);
         delete activeCalls[call.peer];
     });
@@ -247,7 +278,7 @@ function hentikanScreenSharing() {
     }
     presentationContainer.classList.remove('active');
     presentationVideo.srcObject = null;
-    shareScreenBtn.innerText = "Bagikan Layar (Paparan)";
+    shareScreenBtn.innerText = "Paparan";
     shareScreenBtn.classList.remove('active');
 }
 
@@ -258,32 +289,20 @@ function tambahkanKotakVideo(peerId, stream) {
         card.className = 'video-card';
         card.id = `video-card-${peerId}`;
         card.innerHTML = `
-            <span>Peserta: ${peerId}</span>
+            <span>${peerId}</span>
             <video autoplay playsinline></video>
             <div class="card-controls">
-                <button onclick="akhiriPanggilanSpesifik('${peerId}')" style="background-color: #dc3545; font-size: 12px; padding: 4px 8px; border:none; color:white; border-radius:4px; cursor:pointer;">Tutup Sambungan</button>
+                <button onclick="akhiriPanggilanSpesifik('${peerId}')" style="background-color: #dc3545; font-size: 11px; padding: 3px 6px; border:none; color:white; border-radius:3px; cursor:pointer;">Tutup</button>
             </div>
         `;
         videoGrid.appendChild(card);
     }
-    
-    const videoElement = card.querySelector('video');
-    videoElement.srcObject = stream;
-
-    videoElement.onloadedmetadata = () => {
-        if (stream.getVideoTracks().length > 0) {
-            // Bisa mendeteksi screen share jika diperlukan
-        }
-    };
+    card.querySelector('video').srcObject = stream;
 }
 
 function hapusKotakVideo(peerId) {
     const card = document.getElementById(`video-card-${peerId}`);
     if (card) card.remove();
-    if (presentationTitle.innerText.includes(peerId)) {
-        presentationContainer.classList.remove('active');
-        presentationVideo.srcObject = null;
-    }
 }
 
 window.akhiriPanggilanSpesifik = function(peerId) {
@@ -294,23 +313,17 @@ window.akhiriPanggilanSpesifik = function(peerId) {
     }
 }
 
-// Fungsi Bunyi Nada Dering Sederhana Menggunakan Web Audio API (Tanpa file mp3 eksternal)
 function bunyikanNadaDering() {
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
-        
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // Nada A4
+        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
-        
         oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.5); // Bunyi setengah detik
-    } catch(e) {
-        console.log('Audio context tidak didukung otomatis.');
-    }
+        oscillator.stop(audioCtx.currentTime + 0.4);
+    } catch(e) {}
 }
