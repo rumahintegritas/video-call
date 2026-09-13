@@ -32,6 +32,7 @@
             width: 100%;
             max-width: 950px;
             box-sizing: border-box;
+            flex-shrink: 0;
         }
         button {
             padding: 5px 10px;
@@ -43,7 +44,7 @@
             font-weight: bold;
         }
         
-        /* Workspace Responsif untuk HP & Desktop */
+        /* Workspace Utama */
         .main-workspace {
             display: flex;
             width: 100%;
@@ -53,10 +54,11 @@
             min-height: 0;
             padding-bottom: 5px;
             flex-direction: row;
+            box-sizing: border-box;
         }
         
         .video-container {
-            flex: 2;
+            flex: 1.5;
             position: relative;
             background: #000;
             border-radius: 8px;
@@ -64,7 +66,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 200px;
+            min-height: 150px;
         }
         .video-main {
             width: 100%;
@@ -78,8 +80,8 @@
             position: absolute;
             top: 10px;
             right: 10px;
-            width: 90px;
-            height: 120px;
+            width: 80px;
+            height: 110px;
             background: #222;
             border-radius: 6px;
             overflow: hidden;
@@ -107,22 +109,22 @@
         /* Tombol Kontrol Mengambang */
         .floating-controls {
             position: absolute;
-            bottom: 10px;
+            bottom: 8px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 5px;
-            background: rgba(0, 0, 0, 0.65);
-            padding: 5px 10px;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 4px 8px;
             border-radius: 20px;
             z-index: 10;
             flex-wrap: wrap;
             justify-content: center;
         }
-        .media-btn { background-color: #444; font-size: 10px; padding: 4px 8px; }
+        .media-btn { background-color: #444; font-size: 10px; padding: 4px 6px; }
         .media-btn.active { background-color: #dc3545; }
 
-        /* Panel Chat Samping */
+        /* Panel Chat */
         .chat-section {
             flex: 1;
             background: #222;
@@ -130,8 +132,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            max-width: 320px;
-            min-width: 200px;
+            min-width: 180px;
         }
         .chat-messages {
             flex: 1;
@@ -166,16 +167,38 @@
             display: flex;
             padding: 5px;
             background: #2a2a2a;
+            flex-shrink: 0;
         }
-        .chat-input-area input { flex: 1; padding: 5px; background: #111; color: white; border: 1px solid #555; border-radius: 4px; font-size: 11px; }
-        .chat-input-area button { background: #007bff; margin-left: 4px; padding: 5px 8px; }
+        .chat-input-area input { flex: 1; padding: 5px; background: #111; color: white; border: 1px solid #555; border-radius: 4px; font-size: 11px; min-width: 0; }
+        .chat-input-area button { background: #007bff; margin-left: 4px; padding: 5px 8px; font-size: 11px; }
 
+        /* Penyesuaian Khusus Layar HP / Portrait (< 768px) */
         @media (max-width: 768px) {
             body { padding: 2px; }
-            .main-workspace { flex-direction: column; }
-            .video-container { flex: 1.5; min-height: 180px; }
-            .chat-section { flex: 1; max-width: 100%; min-height: 150px; }
-            .video-floating { width: 75px; height: 100px; }
+            .main-workspace {
+                flex-direction: column;
+            }
+            .video-container {
+                flex: 1.2;
+                min-height: 160px;
+            }
+            .chat-section {
+                flex: 1;
+                min-height: 120px;
+            }
+            .video-floating {
+                width: 70px;
+                height: 95px;
+            }
+            .floating-controls {
+                bottom: 4px;
+                padding: 3px 6px;
+                gap: 3px;
+            }
+            .media-btn {
+                font-size: 9px;
+                padding: 3px 5px;
+            }
         }
     </style>
 </head>
@@ -211,7 +234,7 @@
         </div>
 
         <div class="chat-section" id="chat-section">
-            <div style="background: #007bff; padding: 5px 8px; font-weight: bold; font-size: 11px;">Chat Room</div>
+            <div style="background: #007bff; padding: 4px 8px; font-weight: bold; font-size: 11px;">Chat Room</div>
             <div class="chat-messages" id="chat-messages">
                 <div style="color: #777; text-align: center; font-size: 10px;">Belum ada pesan</div>
             </div>
