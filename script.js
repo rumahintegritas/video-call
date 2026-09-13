@@ -26,13 +26,13 @@ function mulai(myId, targetId, pakaiVideo) {
 
     if (!pakaiVideo) {
         document.getElementById('video-box').style.display = 'none';
-        hubungkanPeer(myId);
+        hubungkanPeer(myId, false);
     } else {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then(stream => {
                 localStream = stream;
                 document.getElementById('main-video').srcObject = stream;
-                hubungkanPeer(myId);
+                hubungkanPeer(myId, true);
             })
             .catch(err => {
                 alert("Gagal izin kamera!");
@@ -41,13 +41,22 @@ function mulai(myId, targetId, pakaiVideo) {
     }
 }
 
-function hubungkanPeer(myId) {
+function hubungkanPeer(myId, pakaiVideo) {
     peer = new Peer(myId);
 
     peer.on('open', (id) => {
         document.getElementById('my-id').innerText = id;
+        
+        // Buat koneksi data chat
         const conn = peer.connect(targetPeerId);
         aturKoneksiData(conn);
+
+        // Jika mode VC, otomatis lakukan panggilan video ke lawan setelah siap
+        if (pakaiVideo) {
+            setTimeout(() => {
+                mulaiPanggilanVideo();
+            }, 1000); // Beri jeda 1 detik agar peer lawan siap menerima
+        }
     });
 
     peer.on('connection', (conn) => {
@@ -55,14 +64,11 @@ function hubungkanPeer(myId) {
     });
 
     peer.on('call', (call) => {
-        if (confirm("Panggilan masuk! Terima?")) {
-            call.answer(localStream);
-            call.on('stream', (remoteStream) => {
-                document.getElementById('main-video').srcObject = remoteStream;
-            });
-        } else {
-            call.close();
-        }
+        // Otomatis terima panggilan masuk jika mode VC
+        call.answer(localStream);
+        call.on('stream', (remoteStream) => {
+            document.getElementById('main-video').srcObject = remoteStream;
+        });
     });
 
     peer.on('error', (err) => {
@@ -71,10 +77,19 @@ function hubungkanPeer(myId) {
     });
 }
 
+function mulaiPanggilanVideo() {
+    if (!localStream || !targetPeerId) return;
+    
+    const call = peer.call(targetPeerId, localStream);
+    call.on('stream', (remoteStream) => {
+        document.getElementById('main-video').srcObject = remoteStream;
+    });
+}
+
 function aturKoneksiData(conn) {
     activeConnection = conn;
     conn.on('data', (data) => {
-        tampilkanPesan("theirs", data); // Pesan dari lawan masuk ke kiri
+        tampilkanPesan("theirs", data);
     });
 }
 
@@ -83,7 +98,7 @@ function kirimPesan() {
     const text = input.value.trim();
     if (!text) return;
 
-    tampilkanPesan("mine", text); // Pesan Anda masuk ke kanan
+    tampilkanPesan("mine", text);
     
     if (activeConnection) {
         activeConnection.send(text);
@@ -100,7 +115,7 @@ function tampilkanPesan(tipe, text) {
     if (box.innerHTML.includes('Belum ada pesan')) box.innerHTML = '';
     
     const bubble = document.createElement('div');
-    bubble.className = `chat-bubble ${tipe}`; // 'mine' untuk kanan, 'theirs' untuk kiri
+    bubble.className = `chat-bubble ${tipe}`;
     bubble.innerText = text;
     
     box.appendChild(bubble);
