@@ -8,7 +8,7 @@ let pendingCall = null;
 let useFrontCamera = true;
 let targetPeerId = "";
 let ringtoneInterval = null;
-let isMyVideoBig = false; // Status posisi video utama
+let isMyVideoBig = false;
 
 const myIdDisplay = document.getElementById('my-id');
 const targetIdDisplay = document.getElementById('target-id-display');
@@ -34,68 +34,70 @@ const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 
 document.addEventListener("DOMContentLoaded", () => {
-    cariDanHubungkanID(0);
+    // Berikan pilihan manual atau coba otomatis dengan timeout pengaman
+    inisialisasiSistemCepat();
 });
 
-function cariDanHubungkanID(index) {
+function inisialisasiSistemCepat() {
+    myIdDisplay.innerText = "Memuat kamera...";
+    
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })
+        .then(stream => {
+            localStream = stream;
+            updateTampilanVideo();
+            hubungkanPeerJS(0);
+        })
+        .catch(err => {
+            console.warn("Gagal izin kamera penuh, lanjut audio/tanpa video:", err);
+            hubungkanPeerJS(0); // Tetap lanjut meski kamera gagal agar ID bisa ditarik
+        });
+}
+
+function hubungkanPeerJS(index) {
     if (index >= FIXED_IDS.length) {
-        myIdDisplay.innerText = "Slot Penuh";
-        alert('Kedua ID (3Nberadik & 3Nkandung) sedang digunakan!');
+        myIdDisplay.innerText = "Gagal Terhubung (Slot Penuh)";
+        alert("Kedua ID sedang aktif di tab lain. Tutup tab lain terlebih dahulu!");
         return;
     }
 
     const myId = FIXED_IDS[index];
     targetPeerId = FIXED_IDS.find(id => id !== myId);
     
-    myIdDisplay.innerText = myId;
+    myIdDisplay.innerText = `Mencoba ${myId}...`;
     targetIdDisplay.innerText = targetPeerId;
-    
-    peer = new Peer(myId);
+
+    // Tambahkan opsi konfigurasi server publik yang stabil
+    peer = new Peer(myId, {
+        config: {
+            'iceServers': [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
+        }
+    });
 
     peer.on('open', (id) => {
         myIdDisplay.innerText = id;
-        aktifkanKameraDanSetup(true);
+        setupListeners();
     });
 
     peer.on('error', (err) => {
-        console.warn('Peer error:', err);
-        if (err.type === 'unavailable-id') {
+        console.warn('PeerJS Error:', err.type);
+        if (err.type === 'unavailable-id' || err.type === 'browser-incompatible' || err.type === 'network') {
             peer.destroy();
-            cariDanHubungkanID(index + 1); 
+            // Coba ID cadangan berikutnya secara instan
+            hubungkanPeerJS(index + 1);
         } else {
-            myIdDisplay.innerText = "Koneksi Gagal";
+            myIdDisplay.innerText = "Koneksi Terputus";
         }
     });
 }
 
-function aktifkanKameraDanSetup(videoEnabled = true) {
-    const constraints = {
-        video: videoEnabled ? { facingMode: useFrontCamera ? 'user' : 'environment' } : false,
-        audio: true
-    };
-
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-            if (localStream) {
-                localStream.getTracks().forEach(t => t.stop());
-            }
-            localStream = stream;
-            
-            // Atur posisi awal video lokal (di pojok mengambang jika ada remote stream, atau di utama jika belum)
-            updateTampilanVideo();
-            setupListeners();
-        })
-        .catch(error => {
-            console.error('Gagal akses media:', error);
-            alert('Izin kamera/mikrofon diperlukan.');
-            setupListeners();
-        });
-}
-
 function updateTampilanVideo() {
+    if (!localStream) return;
     if (isMyVideoBig) {
         mainVideo.srcObject = localStream;
-        mainVideo.muted = true; // Supaya tidak gema
+        mainVideo.muted = true;
         if (remoteStream) {
             floatingVideo.srcObject = remoteStream;
             floatingLabel.innerText = targetPeerId;
@@ -105,7 +107,7 @@ function updateTampilanVideo() {
             mainVideo.srcObject = remoteStream;
             mainVideo.muted = false;
         } else {
-            mainVideo.srcObject = localStream; // Default sebelum ada panggilan
+            mainVideo.srcObject = localStream;
             mainVideo.muted = true;
         }
         floatingVideo.srcObject = localStream;
@@ -114,9 +116,8 @@ function updateTampilanVideo() {
     }
 }
 
-// Fungsi untuk menukar posisi video besar dan kecil saat diklik
 window.tukarPosisiVideo = function() {
-    if (!remoteStream) return; // Jangan tukar jika belum ada lawan bicara
+    if (!remoteStream) return;
     isMyVideoBig = !isMyVideoBig;
     updateTampilanVideo();
 }
@@ -153,10 +154,7 @@ function setupListeners() {
     };
 
     callVideoBtn.addEventListener('click', () => mulaiPanggilan(true));
-    callAudioBtn.addEventListener('click', () => {
-        aktifkanKameraDanSetup(false);
-        setTimeout(() => mulaiPanggilan(false), 500);
-    });
+    callAudioBtn.addEventListener('click', () => mulaiPanggilan(false));
 
     hangupBtn.addEventListener('click', () => {
         hentikanNadaDering();
@@ -194,22 +192,39 @@ function setupListeners() {
     switchCameraBtn.addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
         switchCameraBtn.innerText = useFrontCamera ? "Putar" : "Depan";
-        aktifkanKameraDanSetup(true);
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? 'user' : 'environment' }, audio: true })
+            .then(stream => {
+                if (localStream) localStream.getTracks().forEach(t => t.stop());
+                localStream = stream;
+                updateTampilanVideo();
+            });
     });
 
+    // Tombol Keluar & Otomatis "Membunuh" Sesi (Kill Tab / Cleanup)
     exitBtn.addEventListener('click', () => {
-        hentikanNadaDering();
-        if (localStream) localStream.getTracks().forEach(t => t.stop());
-        if (currentCall) currentCall.close();
-        if (peer) peer.destroy();
-
-        document.body.innerHTML = `
-            <div style="font-family: Arial; text-align: center; margin-top: 100px;">
-                <h2>Keluar Rapat</h2>
-                <button onclick="window.location.reload()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 15px;">Masuk Lagi</button>
-            </div>
-        `;
+        tutupSesiDanMatikan();
     });
+
+    // Otomatis bersihkan sesi jika tab ditutup atau berpindah
+    window.addEventListener('beforeunload', () => {
+        tutupSesiDanMatikan();
+    });
+}
+
+function tutupSesiDanMatikan() {
+    hentikanNadaDering();
+    if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+    }
+    if (currentCall) {
+        currentCall.close();
+    }
+    if (activeConnection) {
+        activeConnection.close();
+    }
+    if (peer) {
+        peer.destroy(); // Menutup total sambungan ID agar langsung bersih dari server
+    }
 }
 
 function mulaiPanggilan(denganVideo) {
@@ -271,7 +286,6 @@ function kirimPesanChat() {
         setupDataConnection(conn);
         setTimeout(() => conn.send(text), 500);
     }
-    chatInput.value = {};
     chatInput.value = '';
 }
 
