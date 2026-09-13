@@ -11,6 +11,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('hangup-btn').onclick = () => location.reload();
     document.getElementById('send-chat-btn').onclick = kirimPesan;
+    
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') kirimPesan();
+    });
 });
 
 function mulai(myId, targetId, pakaiVideo) {
@@ -21,7 +25,6 @@ function mulai(myId, targetId, pakaiVideo) {
     document.getElementById('my-id').innerText = "Menghubungkan...";
 
     if (!pakaiVideo) {
-        // Jika mode chat saja, sembunyikan kotak video
         document.getElementById('video-box').style.display = 'none';
         hubungkanPeer(myId);
     } else {
@@ -43,8 +46,6 @@ function hubungkanPeer(myId) {
 
     peer.on('open', (id) => {
         document.getElementById('my-id').innerText = id;
-        
-        // Siapkan koneksi data chat otomatis
         const conn = peer.connect(targetPeerId);
         aturKoneksiData(conn);
     });
@@ -73,7 +74,7 @@ function hubungkanPeer(myId) {
 function aturKoneksiData(conn) {
     activeConnection = conn;
     conn.on('data', (data) => {
-        tampilkanPesan("Lawan", data);
+        tampilkanPesan("theirs", data); // Pesan dari lawan masuk ke kiri
     });
 }
 
@@ -82,7 +83,8 @@ function kirimPesan() {
     const text = input.value.trim();
     if (!text) return;
 
-    tampilkanPesan("Anda", text);
+    tampilkanPesan("mine", text); // Pesan Anda masuk ke kanan
+    
     if (activeConnection) {
         activeConnection.send(text);
     } else if (targetPeerId) {
@@ -93,9 +95,14 @@ function kirimPesan() {
     input.value = '';
 }
 
-function tampilkanPesan(sender, text) {
+function tampilkanPesan(tipe, text) {
     const box = document.getElementById('chat-messages');
     if (box.innerHTML.includes('Belum ada pesan')) box.innerHTML = '';
-    box.innerHTML += `<div><b>${sender}:</b> ${text}</div>`;
+    
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${tipe}`; // 'mine' untuk kanan, 'theirs' untuk kiri
+    bubble.innerText = text;
+    
+    box.appendChild(bubble);
     box.scrollTop = box.scrollHeight;
 }
