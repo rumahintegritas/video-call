@@ -31,7 +31,8 @@ function mulai(myId, targetId, pakaiVideo) {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then(stream => {
                 localStream = stream;
-                document.getElementById('main-video').srcObject = stream;
+                // Tampilkan kamera sendiri di kotak kecil (floating-video)
+                document.getElementById('floating-video').srcObject = stream;
                 hubungkanPeer(myId, true);
             })
             .catch(err => {
@@ -47,15 +48,15 @@ function hubungkanPeer(myId, pakaiVideo) {
     peer.on('open', (id) => {
         document.getElementById('my-id').innerText = id;
         
-        // Buat koneksi data chat
+        // Hubungkan data chat
         const conn = peer.connect(targetPeerId);
         aturKoneksiData(conn);
 
-        // Jika mode VC, otomatis lakukan panggilan video ke lawan setelah siap
+        // Jika mode VC, otomatis panggil lawan bicara
         if (pakaiVideo) {
             setTimeout(() => {
                 mulaiPanggilanVideo();
-            }, 1000); // Beri jeda 1 detik agar peer lawan siap menerima
+            }, 1000);
         }
     });
 
@@ -64,9 +65,9 @@ function hubungkanPeer(myId, pakaiVideo) {
     });
 
     peer.on('call', (call) => {
-        // Otomatis terima panggilan masuk jika mode VC
         call.answer(localStream);
         call.on('stream', (remoteStream) => {
+            // Tampilkan video lawan di layar utama
             document.getElementById('main-video').srcObject = remoteStream;
         });
     });
@@ -82,6 +83,7 @@ function mulaiPanggilanVideo() {
     
     const call = peer.call(targetPeerId, localStream);
     call.on('stream', (remoteStream) => {
+        // Tampilkan video lawan di layar utama
         document.getElementById('main-video').srcObject = remoteStream;
     });
 }
