@@ -6,11 +6,18 @@ let activeConnection = null;
 let pendingCall = null;
 let useFrontCamera = true;
 let targetPeerId = "";
-let currentMode = "video"; // "video", "audio", atau "chat"
+let currentMode = "video";
 let ringtoneInterval = null;
 let isMyVideoBig = false;
 
-window.mulaiAplikasi = function(myId, targetId, mode) {
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById('btn-vc-1').onclick = () => mulaiAplikasi('3Nberadik', '3Nkandung', 'video');
+    document.getElementById('btn-vc-2').onclick = () => mulaiAplikasi('3Nkandung', '3Nberadik', 'video');
+    document.getElementById('btn-chat-1').onclick = () => mulaiAplikasi('3Nberadik', '3Nkandung', 'chat');
+    document.getElementById('btn-chat-2').onclick = () => mulaiAplikasi('3Nkandung', '3Nberadik', 'chat');
+});
+
+function mulaiAplikasi(myId, targetId, mode) {
     currentMode = mode;
     targetPeerId = targetId;
     
@@ -19,32 +26,23 @@ window.mulaiAplikasi = function(myId, targetId, mode) {
     document.getElementById('panel-kontrol').style.display = 'flex';
     document.getElementById('my-id').innerText = `Menghubungkan ${myId}...`;
 
-    // Jika mode hanya chat, sembunyikan kotak video dan lebarkan panel chat
     if (currentMode === 'chat') {
         document.getElementById('video-container-box').classList.add('hidden');
         document.getElementById('chat-section').classList.add('full-width');
         document.getElementById('call-video-btn').style.display = 'none';
         document.getElementById('call-audio-btn').style.display = 'none';
         
-        // Langsung sambungkan PeerJS untuk data chat tanpa meminta izin kamera/audio
         hubungkanPeerJS(myId);
     } else {
-        // Jika mode Video Call / Telepon, minta izin media dulu
-        const useVideo = (currentMode === 'video');
-        navigator.mediaDevices.getUserMedia({ video: useVideo, audio: true })
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then(stream => {
                 localStream = stream;
-                if (useVideo) {
-                    document.getElementById('floating-video').srcObject = stream;
-                    document.getElementById('floating-video').muted = true;
-                } else {
-                    document.getElementById('video-container-box').classList.add('hidden');
-                    document.getElementById('chat-section').classList.add('full-width');
-                }
+                document.getElementById('floating-video').srcObject = stream;
+                document.getElementById('floating-video').muted = true;
                 hubungkanPeerJS(myId);
             })
             .catch(err => {
-                alert("Izin perangkat media diperlukan untuk mode ini.");
+                alert("Izin perangkat media diperlukan untuk mode video.");
                 location.reload();
             });
     }
@@ -60,7 +58,6 @@ function hubungkanPeerJS(myId) {
     peer.on('open', (id) => {
         document.getElementById('my-id').innerText = id;
         setupListeners();
-        // Otomatis buat koneksi data chat siap sedia
         bukaKoneksiChat(targetPeerId);
     });
 
@@ -113,8 +110,8 @@ function setupListeners() {
         }
     };
 
-    document.getElementById('call-video-btn').addEventListener('click', () => mulaiPanggilan(true));
-    document.getElementById('call-audio-btn').addEventListener('click', () => mulaiPanggilan(false));
+    document.getElementById('call-video-btn').addEventListener('click', () => mulaiPanggilan());
+    document.getElementById('call-audio-btn').addEventListener('click', () => mulaiPanggilan());
 
     document.getElementById('hangup-btn').addEventListener('click', () => {
         hentikanNadaDering();
@@ -159,7 +156,7 @@ function tutupSesiDanMatikan() {
     if (peer) peer.destroy();
 }
 
-function mulaiPanggilan(denganVideo) {
+function mulaiPanggilan() {
     if (!targetPeerId) return;
     mulaiSuaraBerderingPanggil();
 
@@ -206,7 +203,7 @@ function updateTampilanVideo() {
     const floatingLabel = document.getElementById('floating-label');
 
     if (isMyVideoBig) {
-        if (localStream && currentMode === 'video') mainVideo.srcObject = localStream;
+        if (localStream) mainVideo.srcObject = localStream;
         mainVideo.muted = true;
         if (remoteStream) {
             floatingVideo.srcObject = remoteStream;
@@ -216,11 +213,11 @@ function updateTampilanVideo() {
         if (remoteStream) {
             mainVideo.srcObject = remoteStream;
             mainVideo.muted = false;
-        } else if (localStream && currentMode === 'video') {
+        } else if (localStream) {
             mainVideo.srcObject = localStream;
             mainVideo.muted = true;
         }
-        if (localStream && currentMode === 'video') {
+        if (localStream) {
             floatingVideo.srcObject = localStream;
             floatingVideo.muted = true;
             floatingLabel.innerText = "Anda";
