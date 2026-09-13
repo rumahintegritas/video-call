@@ -6,6 +6,7 @@ let activeConnection = null;
 let pendingCall = null;
 let useFrontCamera = true;
 let targetPeerId = "";
+let ringtoneInterval = null; // Variabel untuk menyimpan interval nada dering
 
 const myIdDisplay = document.getElementById('my-id');
 const labelMyId = document.getElementById('label-my-id');
@@ -28,7 +29,6 @@ const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 
-// Jalankan sistem langsung dari ID PeerJS terlebih dahulu
 document.addEventListener("DOMContentLoaded", () => {
     cariDanHubungkanID(0);
 });
@@ -51,8 +51,6 @@ function cariDanHubungkanID(index) {
     peer.on('open', (id) => {
         myIdDisplay.innerText = id;
         labelMyId.innerText = id;
-        
-        // Setelah ID berhasil didapat, baru aktifkan kamera
         aktifkanKameraDanSetup(true);
     });
 
@@ -87,16 +85,19 @@ function aktifkanKameraDanSetup(videoEnabled = true) {
         .catch(error => {
             console.error('Gagal akses media:', error);
             alert('Izin kamera/mikrofon diperlukan agar video call dapat berjalan.');
-            setupListeners(); // Tetap jalankan listener agar chat dan tombol tetap aktif
+            setupListeners();
         });
 }
 
 function setupListeners() {
+    // Saat ada panggilan masuk (Penerima)
     peer.on('call', (call) => {
         pendingCall = call;
         incomingCallerId.innerText = call.peer;
         incomingModal.style.display = 'flex';
-        bunyikanNadaDering();
+        
+        // Bunyikan nada dering berulang-ulang sampai diangkat atau ditolak
+        mulaiNadaDeringPenerima();
     });
 
     peer.on('connection', (conn) => {
@@ -105,6 +106,7 @@ function setupListeners() {
 
     acceptCallBtn.onclick = () => {
         if (pendingCall) {
+            hentikanNadaDering(); // Matikan dering
             pendingCall.answer(localStream);
             handleActiveCall(pendingCall);
             incomingModal.style.display = 'none';
@@ -114,6 +116,7 @@ function setupListeners() {
 
     rejectCallBtn.onclick = () => {
         if (pendingCall) {
+            hentikanNadaDering(); // Matikan dering
             pendingCall.close();
             incomingModal.style.display = 'none';
             pendingCall = null;
@@ -130,6 +133,7 @@ function setupListeners() {
     });
 
     hangupBtn.addEventListener('click', () => {
+        hentikanNadaDering();
         if (currentCall) {
             currentCall.close();
             akhiriPanggilanUI();
@@ -168,6 +172,7 @@ function setupListeners() {
     });
 
     exitBtn.addEventListener('click', () => {
+        hentikanNadaDering();
         if (localStream) localStream.getTracks().forEach(t => t.stop());
         if (currentCall) currentCall.close();
         if (peer) peer.destroy();
@@ -185,6 +190,9 @@ function setupListeners() {
 function mulaiPanggilan(denganVideo) {
     if (!targetPeerId) return;
 
+    // Bunyikan suara berdering (ringback tone) bagi yang memanggil
+    mulaiSuaraBerderingPanggil();
+
     const call = peer.call(targetPeerId, localStream);
     handleActiveCall(call);
 
@@ -195,6 +203,7 @@ function mulaiPanggilan(denganVideo) {
 }
 
 function handleActiveCall(call) {
+    hentikanNadaDering(); // Hentikan suara dering saat tersambung
     currentCall = call;
     callVideoBtn.style.display = 'none';
     callAudioBtn.style.display = 'none';
@@ -215,6 +224,7 @@ function handleActiveCall(call) {
 }
 
 function akhiriPanggilanUI() {
+    hentikanNadaDering();
     if (currentCall) {
         currentCall = null;
     }
@@ -295,17 +305,47 @@ window.toggleChatMinimize = function() {
     }
 }
 
-function bunyikanNadaDering() {
+// Generator Suara Dering Menggunakan Web Audio API
+function putarBipSuara(freq1, freq2) {
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.4);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq1, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(freq2, audioCtx.currentTime + 0.2);
+        
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
     } catch(e) {}
+}
+
+// Nada Dering Masuk untuk Penerima (Berulang setiap 2 detik)
+function mulaiNadaDeringPenerima() {
+    hentikanNadaDering();
+    ringtoneInterval = setInterval(() => {
+        putarBipSuara(440, 523); // Nada berdering ganda
+    }, 2000);
+}
+
+// Suara Berdering (Ringback tone) saat Memanggil (Berulang setiap 3 detik)
+function mulaiSuaraBerderingPanggil() {
+    hentikanNadaDering();
+    ringtoneInterval = setInterval(() => {
+        putarBipSuara(350, 440); // Nada tunggu panggilan
+    }, 3000);
+}
+
+// Hentikan semua suara dering
+function hentikanNadaDering() {
+    if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+    }
 }
