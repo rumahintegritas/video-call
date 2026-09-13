@@ -7,30 +7,50 @@ let useFrontCamera = true;
 let isMyVideoBig = false;
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('btn-vc').onclick = () => inisialisasiAplikasi(true);
-    document.getElementById('btn-chat').onclick = () => inisialisasiAplikasi(false);
+    // Cek apakah halaman dibuka melalui tautan undangan (?room=...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomToJoin = urlParams.get('room');
 
-    document.getElementById('connect-btn').onclick = () => {
-        const inputId = document.getElementById('target-id-input').value.trim();
-        if (!inputId) {
-            alert("Masukkan ID lawan terlebih dahulu!");
+    if (roomToJoin) {
+        document.getElementById('panel-pemilihan').style.display = 'none';
+        document.getElementById('panel-kontrol').style.display = 'flex';
+        document.getElementById('status-koneksi').innerText = "Menghubungkan ke Ruang...";
+        
+        targetPeerId = roomToJoin;
+        muatMediaKamera(true, () => {
+            inisialisasiPeerOtomatis(true, true);
+        });
+    } else {
+        document.getElementById('btn-vc').onclick = () => mulaiBuatRuang(true);
+        document.getElementById('btn-chat').onclick = () => mulaiBuatRuang(false);
+    }
+
+    // Tombol Salin Tautan Ruang
+    document.getElementById('copy-link-btn').onclick = () => {
+        const myId = peer ? peer.id : "";
+        if (!myId) {
+            alert("Ruang sedang disiapkan, tunggu sebentar...");
             return;
         }
-        targetPeerId = inputId;
-        document.getElementById('target-id-display').innerText = targetPeerId;
-        hubungkanKeLawan(true);
+        const roomLink = window.location.origin + window.location.pathname + "?room=" + myId;
+        navigator.clipboard.writeText(roomLink).then(() => {
+            alert("Tautan berhasil disalin!\n\nTempel (Paste) link ini ke kolom chat di bawah dan kirim ke lawan bicara Anda.");
+        });
     };
 
+    // Tombol Keluar / Tutup Aplikasi
     document.getElementById('hangup-btn').onclick = () => {
-        tutupSesiDanKeluar();
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (peer) peer.destroy();
+        window.location.href = "about:blank"; // Mengarah ke tab kosong browser
     };
 
     document.getElementById('send-chat-btn').onclick = kirimPesan;
-    
     document.getElementById('chat-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') kirimPesan();
     });
 
+    // Kontrol Mute Suara
     document.getElementById('mute-btn').onclick = () => {
         if (!localStream) return;
         const audioTrack = localStream.getAudioTracks()[0];
@@ -42,6 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    // Kontrol Matikan/Nyalakan Kamera
     document.getElementById('camera-btn').onclick = () => {
         if (!localStream) return;
         const videoTrack = localStream.getVideoTracks()[0];
@@ -53,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    // Tombol Putar Kamera Depan/Belakang (HP)
     document.getElementById('switch-camera-btn').onclick = () => {
         useFrontCamera = !useFrontCamera;
         muatMediaKamera(true, () => {
@@ -65,26 +87,19 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     };
-
-    document.getElementById('my-id').onclick = () => {
-        const idText = document.getElementById('my-id').innerText;
-        navigator.clipboard.writeText(idText).then(() => {
-            alert("ID Anda berhasil disalin! Kirimkan ke lawan bicara.");
-        });
-    };
 });
 
-function inisialisasiAplikasi(pakaiVideo) {
+function mulaiBuatRuang(pakaiVideo) {
     document.getElementById('panel-pemilihan').style.display = 'none';
     document.getElementById('panel-kontrol').style.display = 'flex';
-    document.getElementById('my-id').innerText = "Membuat ID...";
+    document.getElementById('status-koneksi').innerText = "Membuat Ruang...";
 
     if (!pakaiVideo) {
         document.getElementById('video-box').style.display = 'none';
-        buatPeerBaru(false);
+        inisialisasiPeerOtomatis(false, false);
     } else {
         muatMediaKamera(true, () => {
-            buatPeerBaru(true);
+            inisialisasiPeerOtomatis(true, false);
         });
     }
 }
@@ -97,9 +112,7 @@ function muatMediaKamera(pakaiVideo, callback) {
 
     navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
             localStream = stream;
             updateTampilanVideo();
             document.getElementById('video-controls').style.display = 'flex';
@@ -107,11 +120,11 @@ function muatMediaKamera(pakaiVideo, callback) {
         })
         .catch(err => {
             alert("Gagal mengakses kamera/mikrofon! Pastikan izin browser diizinkan.");
-            location.reload();
+            window.location.reload();
         });
 }
 
-function buatPeerBaru(pakaiVideo) {
+function inisialisasiPeerOtomatis(pakaiVideo, sebagaiPengikut) {
     peer = new Peer({
         host: '0.peerjs.com',
         port: 443,
@@ -120,22 +133,35 @@ function buatPeerBaru(pakaiVideo) {
     });
 
     peer.on('open', (id) => {
-        document.getElementById('my-id').innerText = id;
+        if (sebagaiPengikut) {
+            document.getElementById('status-koneksi').innerText = "Terhubung!";
+            
+            const conn = peer.connect(targetPeerId);
+            aturKoneksiData(conn);
+
+            if (pakaiVideo && localStream) {
+                setTimeout(() => {
+                    const call = peer.call(targetPeerId, localStream);
+                    call.on('stream', (stream) => {
+                        remoteStream = stream;
+                        updateTampilanVideo();
+                    });
+                }, 800);
+            }
+        } else {
+            document.getElementById('status-koneksi').innerText = "Ruang Siap! (Silakan Salin Tautan)";
+        }
     });
 
-    // Saat lawan menghubungi via chat
     peer.on('connection', (conn) => {
         targetPeerId = conn.peer;
-        document.getElementById('target-id-input').value = targetPeerId;
-        document.getElementById('target-id-display').innerText = targetPeerId; // Tampilkan ID lawan
+        document.getElementById('status-koneksi').innerText = "Terhubung dengan Lawan!";
         aturKoneksiData(conn);
     });
 
-    // Saat lawan menghubungi via Video Call
     peer.on('call', (call) => {
         targetPeerId = call.peer;
-        document.getElementById('target-id-input').value = targetPeerId;
-        document.getElementById('target-id-display').innerText = targetPeerId; // Tampilkan ID lawan
+        document.getElementById('status-koneksi').innerText = "Terhubung dengan Lawan!";
         call.answer(localStream);
         call.on('stream', (stream) => {
             remoteStream = stream;
@@ -148,31 +174,6 @@ function buatPeerBaru(pakaiVideo) {
     });
 }
 
-function hubungkanKeLawan(pakaiVideo) {
-    if (!targetPeerId) return;
-
-    const conn = peer.connect(targetPeerId);
-    aturKoneksiData(conn);
-
-    if (pakaiVideo && localStream) {
-        const call = peer.call(targetPeerId, localStream);
-        call.on('stream', (stream) => {
-            remoteStream = stream;
-            updateTampilanVideo();
-        });
-    }
-}
-
-function tutupSesiDanKeluar() {
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-    }
-    if (peer) {
-        peer.destroy();
-    }
-    window.location.href = "about:blank";
-}
-
 function updateTampilanVideo() {
     const mainVideo = document.getElementById('main-video');
     const floatingVideo = document.getElementById('floating-video');
@@ -183,7 +184,7 @@ function updateTampilanVideo() {
         mainVideo.muted = true;
         if (remoteStream) {
             floatingVideo.srcObject = remoteStream;
-            floatingLabel.innerText = targetPeerId || "Lawan";
+            floatingLabel.innerText = "Lawan";
         }
     } else {
         if (remoteStream) {
