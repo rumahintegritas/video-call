@@ -58,9 +58,10 @@
             color: white;
             font-weight: bold;
         }
-        .btn-mode-1 { background-color: #28a745; }
-        .btn-mode-2 { background-color: #17a2b8; }
-        .btn-mode-chat { background-color: #ffc107; color: #000; }
+        #btn-vc-1 { background-color: #28a745; }
+        #btn-vc-2 { background-color: #17a2b8; }
+        #btn-chat-1 { background-color: #ffc107; color: #000; }
+        #btn-chat-2 { background-color: #ffc107; color: #000; }
 
         /* Modal Panggilan Masuk */
         #incoming-modal {
@@ -94,7 +95,6 @@
             padding-bottom: 5px;
         }
 
-        /* Area Video Utama (Bisa disembunyikan jika mode chat saja) */
         .video-container {
             flex: 2;
             position: relative;
@@ -160,7 +160,6 @@
             z-index: 10;
         }
         .media-btn { background-color: #444; }
-        .media-btn.active { background-color: #dc3545; }
 
         /* Panel Chat */
         .chat-section {
@@ -185,9 +184,6 @@
             font-weight: bold;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
         .chat-messages {
             flex: 1;
@@ -234,13 +230,13 @@
         <button id="exit-btn">Keluar</button>
     </div>
     
-    <!-- Panel Pemilihan Mode di Awal -->
+    <!-- Panel Pemilihan Mode -->
     <div class="top-panel" id="panel-pemilihan">
         <span><strong>Pilih Mode & Perangkat:</strong></span>
-        <button class="btn-mode-1" onclick="mulaiAplikasi('3Nberadik', '3Nkandung', 'video')">VC: 3Nberadik</button>
-        <button class="btn-mode-2" onclick="mulaiAplikasi('3Nkandung', '3Nberadik', 'video')">VC: 3Nkandung</button>
-        <button class="btn-mode-chat" onclick="mulaiAplikasi('3Nberadik', '3Nkandung', 'chat')">Chat: 3Nberadik</button>
-        <button class="btn-mode-chat" onclick="mulaiAplikasi('3Nkandung', '3Nberadik', 'chat')">Chat: 3Nkandung</button>
+        <button id="btn-vc-1">VC: 3Nberadik</button>
+        <button id="btn-vc-2">VC: 3Nkandung</button>
+        <button id="btn-chat-1">Chat: 3Nberadik</button>
+        <button id="btn-chat-2">Chat: 3Nkandung</button>
     </div>
 
     <!-- Panel Kontrol Setelah Masuk -->
@@ -253,7 +249,7 @@
     </div>
 
     <div class="main-workspace">
-        <!-- Area Video (Disembunyikan otomatis jika mode chat saja) -->
+        <!-- Area Video -->
         <div class="video-container" id="video-container-box">
             <video id="main-video" class="video-main" autoplay playsinline></video>
             
@@ -269,11 +265,9 @@
             </div>
         </div>
 
-        <!-- Bagian Chat Samping / Full -->
+        <!-- Bagian Chat -->
         <div class="chat-section" id="chat-section">
-            <div class="chat-header">
-                <span>Obrolan Pesan P2P</span>
-            </div>
+            <div class="chat-header">Obrolan Pesan P2P</div>
             <div class="chat-body" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
                 <div class="chat-messages" id="chat-messages">
                     <div style="color: #777; text-align: center; font-size: 10px;">Belum ada pesan</div>
