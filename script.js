@@ -1,4 +1,3 @@
-const FIXED_IDS = ["3Nberadik", "3Nkandung"];
 let peer = null;
 let localStream = null;
 let remoteStream = null;
@@ -34,46 +33,45 @@ const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Berikan pilihan manual atau coba otomatis dengan timeout pengaman
-    inisialisasiSistemCepat();
+    InisialisasiPilihanID();
 });
 
-function inisialisasiSistemCepat() {
+// Menampilkan kotak dialog kecil agar Anda bisa memilih ID secara manual tanpa macet
+function InisialisasiPilihanID() {
+    let pilihan = prompt("Pilih ID perangkat ini:\nKetik 1 untuk: 3Nberadik\nKetik 2 untuk: 3Nkandung", "1");
+    let myChosenId = (pilihan === "2") ? "3Nkernel_kandung" : "3Nberadik"; // Atau gunakan nama unik yang pasti bebas
+    
+    // Supaya lebih simpel dan anti-bentrok, kita beri opsi teks bebas
+    if (pilihan === "2") {
+        myChosenId = "3Nkandung";
+        targetPeerId = "3Nberadik";
+    } else {
+        myChosenId = "3Nberadik";
+        targetPeerId = "3Nkandung";
+    }
+
     myIdDisplay.innerText = "Memuat kamera...";
     
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })
         .then(stream => {
             localStream = stream;
             updateTampilanVideo();
-            hubungkanPeerJS(0);
+            hubungkanKeServerPeer(myChosenId);
         })
         .catch(err => {
-            console.warn("Gagal izin kamera penuh, lanjut audio/tanpa video:", err);
-            hubungkanPeerJS(0); // Tetap lanjut meski kamera gagal agar ID bisa ditarik
+            console.warn("Kamera tidak aktif, lanjut mode audio:", err);
+            hubungkanKeServerPeer(myChosenId);
         });
 }
 
-function hubungkanPeerJS(index) {
-    if (index >= FIXED_IDS.length) {
-        myIdDisplay.innerText = "Gagal Terhubung (Slot Penuh)";
-        alert("Kedua ID sedang aktif di tab lain. Tutup tab lain terlebih dahulu!");
-        return;
-    }
-
-    const myId = FIXED_IDS[index];
-    targetPeerId = FIXED_IDS.find(id => id !== myId);
-    
-    myIdDisplay.innerText = `Mencoba ${myId}...`;
+function hubungkanKeServerPeer(myId) {
+    myIdDisplay.innerText = `Menghubungkan ${myId}...`;
     targetIdDisplay.innerText = targetPeerId;
 
-    // Tambahkan opsi konfigurasi server publik yang stabil
     peer = new Peer(myId, {
-        config: {
-            'iceServers': [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:global.stun.twilio.com:3478' }
-            ]
-        }
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/'
     });
 
     peer.on('open', (id) => {
@@ -82,13 +80,12 @@ function hubungkanPeerJS(index) {
     });
 
     peer.on('error', (err) => {
-        console.warn('PeerJS Error:', err.type);
-        if (err.type === 'unavailable-id' || err.type === 'browser-incompatible' || err.type === 'network') {
-            peer.destroy();
-            // Coba ID cadangan berikutnya secara instan
-            hubungkanPeerJS(index + 1);
+        console.warn('PeerJS Error:', err);
+        if (err.type === 'unavailable-id') {
+            alert(`ID "${myId}" sedang aktif di tab/perangkat lain! Tutup tab tersebut atau refresh.`);
+            myIdDisplay.innerText = "ID Terpakai (Ganti Tab)";
         } else {
-            myIdDisplay.innerText = "Koneksi Terputus";
+            myIdDisplay.innerText = "Gagal Terhubung ke Server";
         }
     });
 }
@@ -200,12 +197,12 @@ function setupListeners() {
             });
     });
 
-    // Tombol Keluar & Otomatis "Membunuh" Sesi (Kill Tab / Cleanup)
+    // Tombol Keluar & Hancurkan Sesi Total
     exitBtn.addEventListener('click', () => {
         tutupSesiDanMatikan();
+        window.location.reload();
     });
 
-    // Otomatis bersihkan sesi jika tab ditutup atau berpindah
     window.addEventListener('beforeunload', () => {
         tutupSesiDanMatikan();
     });
@@ -213,18 +210,10 @@ function setupListeners() {
 
 function tutupSesiDanMatikan() {
     hentikanNadaDering();
-    if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-    }
-    if (currentCall) {
-        currentCall.close();
-    }
-    if (activeConnection) {
-        activeConnection.close();
-    }
-    if (peer) {
-        peer.destroy(); // Menutup total sambungan ID agar langsung bersih dari server
-    }
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (currentCall) currentCall.close();
+    if (activeConnection) activeConnection.close();
+    if (peer) peer.destroy();
 }
 
 function mulaiPanggilan(denganVideo) {
