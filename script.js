@@ -3,8 +3,8 @@ let localStream = null;
 let remoteStream = null;
 let activeConnection = null;
 let targetPeerId = "";
-let useFrontCamera = true; // Status kamera depan/belakang
-let isMyVideoBig = false;  // Status apakah video kita sedang di layar besar
+let useFrontCamera = true;
+let isMyVideoBig = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btn-vc-1').onclick = () => mulai('3Nberadik', '3Nkandung', true);
@@ -12,23 +12,70 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btn-chat-1').onclick = () => mulai('3Nberadik', '3Nkandung', false);
     document.getElementById('btn-chat-2').onclick = () => mulai('3Nkandung', '3Nberadik', false);
 
-    document.getElementById('hangup-btn').onclick = () => location.reload();
+    // Tombol Keluar: Mematikan kamera/koneksi lalu mengarahkannya ke tab kosong (about:blank)
+    document.getElementById('hangup-btn').onclick = () => {
+        tutupSesiDanKeluar();
+    };
+
     document.getElementById('send-chat-btn').onclick = kirimPesan;
     
     document.getElementById('chat-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') kirimPesan();
     });
 
-    // Tombol putar kamera depan / belakang
-    document.getElementById('switch-camera-btn').onclick = gantiKamera;
+    document.getElementById('mute-btn').onclick = () => {
+        if (!localStream) return;
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            const btn = document.getElementById('mute-btn');
+            btn.innerText = audioTrack.enabled ? "Mute" : "Unmute";
+            btn.classList.toggle('active', !audioTrack.enabled);
+        }
+    };
+
+    document.getElementById('camera-btn').onclick = () => {
+        if (!localStream) return;
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            const btn = document.getElementById('camera-btn');
+            btn.innerText = videoTrack.enabled ? "Matikan Kamera" : "Nyalakan Kamera";
+            btn.classList.toggle('active', !videoTrack.enabled);
+        }
+    };
+
+    document.getElementById('switch-camera-btn').onclick = () => {
+        useFrontCamera = !useFrontCamera;
+        muatMediaKamera(true, () => {
+            if (peer && targetPeerId && localStream) {
+                const call = peer.call(targetPeerId, localStream);
+                call.on('stream', (stream) => {
+                    remoteStream = stream;
+                    updateTampilanVideo();
+                });
+            }
+        });
+    };
 });
+
+function tutupSesiDanKeluar() {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    if (peer) {
+        peer.destroy();
+    }
+    // Mengarahkan ke halaman/tab kosong browser
+    window.location.href = "about:blank";
+}
 
 function mulai(myId, targetId, pakaiVideo) {
     targetPeerId = targetId;
     document.getElementById('target-id-display').innerText = targetId;
     document.getElementById('panel-pemilihan').style.display = 'none';
     document.getElementById('panel-kontrol').style.display = 'flex';
-    document.getElementById('my-id').innerText = "Menghubungkan...";
+    document.getElementById('my-id').innerText = myId;
 
     if (!pakaiVideo) {
         document.getElementById('video-box').style.display = 'none';
@@ -48,7 +95,6 @@ function muatMediaKamera(pakaiVideo, callback) {
 
     navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
-            // Jika sudah ada stream sebelumnya, hentikan track lama agar kamera tidak nyangkut
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
             }
@@ -58,32 +104,15 @@ function muatMediaKamera(pakaiVideo, callback) {
             if (callback) callback();
         })
         .catch(err => {
-            alert("Gagal mengakses kamera/mikrofon!");
+            alert("Gagal mengakses kamera/mikrofon! Pastikan izin browser diizinkan.");
             location.reload();
         });
-}
-
-function gantiKamera() {
-    useFrontCamera = !useFrontCamera;
-    muatMediaKamera(true, () => {
-        // Jika sedang dalam panggilan aktif, perbarui stream ke lawan bicara
-        if (peer && targetPeerId) {
-            // Sambungkan ulang panggilan dengan stream kamera baru
-            const call = peer.call(targetPeerId, localStream);
-            call.on('stream', (stream) => {
-                remoteStream = stream;
-                updateTampilanVideo();
-            });
-        }
-    });
 }
 
 function hubungkanPeer(myId, pakaiVideo) {
     peer = new Peer(myId);
 
     peer.on('open', (id) => {
-        document.getElementById('my-id').innerText = id;
-        
         const conn = peer.connect(targetPeerId);
         aturKoneksiData(conn);
 
@@ -107,7 +136,7 @@ function hubungkanPeer(myId, pakaiVideo) {
     });
 
     peer.on('error', (err) => {
-        alert("ID sedang digunakan di tab lain!");
+        alert("ID sedang digunakan di tab/perangkat lain!");
         location.reload();
     });
 }
@@ -122,22 +151,19 @@ function mulaiPanggilanVideo() {
     });
 }
 
-// Fungsi utama untuk mengatur tata letak video besar / kecil (Bisa tukar posisi)
 function updateTampilanVideo() {
     const mainVideo = document.getElementById('main-video');
     const floatingVideo = document.getElementById('floating-video');
     const floatingLabel = document.getElementById('floating-label');
 
     if (isMyVideoBig) {
-        // Jika video kita di layar besar
         mainVideo.srcObject = localStream;
-        mainVideo.muted = true; // Mute suara sendiri agar tidak gema
+        mainVideo.muted = true;
         if (remoteStream) {
             floatingVideo.srcObject = remoteStream;
             floatingLabel.innerText = targetPeerId;
         }
     } else {
-        // Jika video lawan di layar besar, video kita di kotak kecil
         if (remoteStream) {
             mainVideo.srcObject = remoteStream;
             mainVideo.muted = false;
@@ -153,7 +179,6 @@ function updateTampilanVideo() {
     }
 }
 
-// Fungsi saat kotak kecil diklik untuk bertukar posisi besar/kecil
 window.tukarPosisiVideo = function() {
     if (!remoteStream) return;
     isMyVideoBig = !isMyVideoBig;
