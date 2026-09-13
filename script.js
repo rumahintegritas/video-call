@@ -7,10 +7,18 @@ let useFrontCamera = true;
 let isMyVideoBig = false;
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('btn-vc-1').onclick = () => mulai('3Nberadik', '3Nkandung', true);
-    document.getElementById('btn-vc-2').onclick = () => mulai('3Nkandung', '3Nberadik', true);
-    document.getElementById('btn-chat-1').onclick = () => mulai('3Nberadik', '3Nkandung', false);
-    document.getElementById('btn-chat-2').onclick = () => mulai('3Nkandung', '3Nberadik', false);
+    document.getElementById('btn-vc').onclick = () => inisialisasiAplikasi(true);
+    document.getElementById('btn-chat').onclick = () => inisialisasiAplikasi(false);
+
+    document.getElementById('connect-btn').onclick = () => {
+        const inputId = document.getElementById('target-id-input').value.trim();
+        if (!inputId) {
+            alert("Masukkan ID lawan terlebih dahulu!");
+            return;
+        }
+        targetPeerId = inputId;
+        hubungkanKeLawan(true);
+    };
 
     document.getElementById('hangup-btn').onclick = () => {
         tutupSesiDanKeluar();
@@ -56,31 +64,27 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     };
+
+    // Fitur klik untuk salin ID sendiri
+    document.getElementById('my-id').onclick = () => {
+        const idText = document.getElementById('my-id').innerText;
+        navigator.clipboard.writeText(idText).then(() => {
+            alert("ID Anda berhasil disalin! Kirimkan ke lawan bicara.");
+        });
+    };
 });
 
-function tutupSesiDanKeluar() {
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-    }
-    if (peer) {
-        peer.destroy();
-    }
-    window.location.href = "about:blank";
-}
-
-function mulai(myId, targetId, pakaiVideo) {
-    targetPeerId = targetId;
-    document.getElementById('target-id-display').innerText = targetId;
+function inisialisasiAplikasi(pakaiVideo) {
     document.getElementById('panel-pemilihan').style.display = 'none';
     document.getElementById('panel-kontrol').style.display = 'flex';
-    document.getElementById('my-id').innerText = myId;
+    document.getElementById('my-id').innerText = "Membuat ID...";
 
     if (!pakaiVideo) {
         document.getElementById('video-box').style.display = 'none';
-        hubungkanPeer(myId, false);
+        buatPeerBaru(false);
     } else {
         muatMediaKamera(true, () => {
-            hubungkanPeer(myId, true);
+            buatPeerBaru(true);
         });
     }
 }
@@ -107,32 +111,28 @@ function muatMediaKamera(pakaiVideo, callback) {
         });
 }
 
-function hubungkanPeer(myId, pakaiVideo) {
-    // Menambahkan konfigurasi debug dan port standar agar lebih stabil di server publik
-    peer = new Peer(myId, {
+function buatPeerBaru(pakaiVideo) {
+    // Tanpa parameter ID, PeerJS otomatis membuat ID acak yang unik dan bebas bentrok
+    peer = new Peer({
         host: '0.peerjs.com',
         port: 443,
         path: '/',
-        secure: true,
-        debug: 1
+        secure: true
     });
 
     peer.on('open', (id) => {
-        const conn = peer.connect(targetPeerId);
-        aturKoneksiData(conn);
-
-        if (pakaiVideo) {
-            setTimeout(() => {
-                mulaiPanggilanVideo();
-            }, 1000);
-        }
+        document.getElementById('my-id').innerText = id;
     });
 
     peer.on('connection', (conn) => {
+        targetPeerId = conn.peer;
+        document.getElementById('target-id-input').value = targetPeerId;
         aturKoneksiData(conn);
     });
 
     peer.on('call', (call) => {
+        targetPeerId = call.peer;
+        document.getElementById('target-id-input').value = targetPeerId;
         call.answer(localStream);
         call.on('stream', (stream) => {
             remoteStream = stream;
@@ -141,26 +141,38 @@ function hubungkanPeer(myId, pakaiVideo) {
     });
 
     peer.on('error', (err) => {
-        if (err.type === 'unavailable-id') {
-            // Berikan jeda atau opsi coba lagi otomatis saat ID masih terkunci di server
-            setTimeout(() => {
-                alert(`ID "${myId}" sedang dilepaskan oleh server. Silakan klik OK lalu coba masuk kembali.`);
-                location.reload();
-            }, 500);
-        } else {
-            console.warn("Peer error: ", err);
-        }
+        console.warn("Peer error: ", err);
     });
 }
 
-function mulaiPanggilanVideo() {
-    if (!localStream || !targetPeerId) return;
-    
-    const call = peer.call(targetPeerId, localStream);
-    call.on('stream', (stream) => {
-        remoteStream = stream;
-        updateTampilanVideo();
-    });
+function hubungkanKeLawan(pakaiVideo) {
+    if (!targetPeerId) return;
+
+    // 1. Hubungkan koneksi data chat
+    const conn = peer.connect(targetPeerId);
+    aturKoneksiData(conn);
+
+    // 2. Hubungkan panggilan video jika dalam mode VC
+    if (pakaiVideo && localStream) {
+        const call = peer.call(targetPeerId, localStream);
+        call.on('stream', (stream) => {
+            remoteStream = stream;
+            updateTampilanVideo();
+        });
+        alert("Menghubungkan panggilan ke " + targetPeerId);
+    } else {
+        alert("Terhubung ke chat " + targetPeerId);
+    }
+}
+
+function tutupSesiDanKeluar() {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    if (peer) {
+        peer.destroy();
+    }
+    window.location.href = "about:blank";
 }
 
 function updateTampilanVideo() {
@@ -173,7 +185,7 @@ function updateTampilanVideo() {
         mainVideo.muted = true;
         if (remoteStream) {
             floatingVideo.srcObject = remoteStream;
-            floatingLabel.innerText = targetPeerId;
+            floatingLabel.innerText = targetPeerId || "Lawan";
         }
     } else {
         if (remoteStream) {
