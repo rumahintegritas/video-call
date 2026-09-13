@@ -4,43 +4,53 @@ let remoteStream = null;
 let currentCall = null;
 let activeConnection = null;
 let pendingCall = null;
+let useFrontCamera = true;
 let targetPeerId = "";
-let isMyVideoBig = false;
+let currentMode = "video"; // "video", "audio", atau "chat"
 let ringtoneInterval = null;
+let isMyVideoBig = false;
 
-document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('btn-beradik').addEventListener('click', () => {
-        mulaiInisialisasi("3Nberadik", "3Nkandung");
-    });
-    
-    document.getElementById('btn-kandung').addEventListener('click', () => {
-        mulaiInisialisasi("3Nkandung", "3Nberadik");
-    });
-});
-
-function mulaiInisialisasi(myId, targetId) {
+window.mulaiAplikasi = function(myId, targetId, mode) {
+    currentMode = mode;
     targetPeerId = targetId;
+    
     document.getElementById('target-id-display').innerText = targetPeerId;
     document.getElementById('panel-pemilihan').style.display = 'none';
     document.getElementById('panel-kontrol').style.display = 'flex';
-    document.getElementById('my-id').innerText = "Menghubungkan kamera...";
+    document.getElementById('my-id').innerText = `Menghubungkan ${myId}...`;
 
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-            localStream = stream;
-            document.getElementById('floating-video').srcObject = stream;
-            document.getElementById('floating-video').muted = true;
-            hubungkanPeerJS(myId);
-        })
-        .catch(err => {
-            alert("Izin kamera/audio diperlukan untuk melanjutkan!");
-            location.reload();
-        });
+    // Jika mode hanya chat, sembunyikan kotak video dan lebarkan panel chat
+    if (currentMode === 'chat') {
+        document.getElementById('video-container-box').classList.add('hidden');
+        document.getElementById('chat-section').classList.add('full-width');
+        document.getElementById('call-video-btn').style.display = 'none';
+        document.getElementById('call-audio-btn').style.display = 'none';
+        
+        // Langsung sambungkan PeerJS untuk data chat tanpa meminta izin kamera/audio
+        hubungkanPeerJS(myId);
+    } else {
+        // Jika mode Video Call / Telepon, minta izin media dulu
+        const useVideo = (currentMode === 'video');
+        navigator.mediaDevices.getUserMedia({ video: useVideo, audio: true })
+            .then(stream => {
+                localStream = stream;
+                if (useVideo) {
+                    document.getElementById('floating-video').srcObject = stream;
+                    document.getElementById('floating-video').muted = true;
+                } else {
+                    document.getElementById('video-container-box').classList.add('hidden');
+                    document.getElementById('chat-section').classList.add('full-width');
+                }
+                hubungkanPeerJS(myId);
+            })
+            .catch(err => {
+                alert("Izin perangkat media diperlukan untuk mode ini.");
+                location.reload();
+            });
+    }
 }
 
 function hubungkanPeerJS(myId) {
-    document.getElementById('my-id').innerText = `Menghubungkan ${myId}...`;
-
     peer = new Peer(myId, {
         host: '0.peerjs.com',
         port: 443,
@@ -50,12 +60,13 @@ function hubungkanPeerJS(myId) {
     peer.on('open', (id) => {
         document.getElementById('my-id').innerText = id;
         setupListeners();
-        alert(`Berhasil online sebagai: ${id}`);
+        // Otomatis buat koneksi data chat siap sedia
+        bukaKoneksiChat(targetPeerId);
     });
 
     peer.on('error', (err) => {
         if (err.type === 'unavailable-id') {
-            alert(`ID "${myId}" sedang aktif di perangkat/tab lain!`);
+            alert(`ID "${myId}" sedang digunakan di tab/perangkat lain!`);
             location.reload();
         } else {
             document.getElementById('my-id').innerText = "Koneksi Gagal";
@@ -63,10 +74,18 @@ function hubungkanPeerJS(myId) {
     });
 }
 
+function bukaKoneksiChat(targetId) {
+    if (!activeConnection && targetId) {
+        const conn = peer.connect(targetId);
+        setupDataConnection(conn);
+    }
+}
+
 function setupListeners() {
     peer.on('call', (call) => {
         pendingCall = call;
         document.getElementById('incoming-caller-id').innerText = call.peer;
+        document.getElementById('incoming-title').innerText = "Panggilan Masuk!";
         document.getElementById('incoming-modal').style.display = 'flex';
         mulaiNadaDeringPenerima();
     });
@@ -94,13 +113,8 @@ function setupListeners() {
         }
     };
 
-    document.getElementById('call-video-btn').addEventListener('click', () => {
-        mulaiPanggilan();
-    });
-
-    document.getElementById('call-audio-btn').addEventListener('click', () => {
-        mulaiPanggilan();
-    });
+    document.getElementById('call-video-btn').addEventListener('click', () => mulaiPanggilan(true));
+    document.getElementById('call-audio-btn').addEventListener('click', () => mulaiPanggilan(false));
 
     document.getElementById('hangup-btn').addEventListener('click', () => {
         hentikanNadaDering();
@@ -116,34 +130,42 @@ function setupListeners() {
     document.getElementById('mute-btn').addEventListener('click', () => {
         if (!localStream) return;
         const track = localStream.getAudioTracks()[0];
-        track.enabled = !track.enabled;
-        document.getElementById('mute-btn').innerText = track.enabled ? "Mute" : "Unmute";
+        if (track) {
+            track.enabled = !track.enabled;
+            document.getElementById('mute-btn').innerText = track.enabled ? "Mute" : "Unmute";
+        }
     });
 
     document.getElementById('camera-btn').addEventListener('click', () => {
         if (!localStream) return;
         const track = localStream.getVideoTracks()[0];
-        track.enabled = !track.enabled;
-        document.getElementById('camera-btn').innerText = track.enabled ? "Kamera" : "Buka";
+        if (track) {
+            track.enabled = !track.enabled;
+            document.getElementById('camera-btn').innerText = track.enabled ? "Kamera" : "Buka";
+        }
     });
 
     document.getElementById('exit-btn').addEventListener('click', () => {
-        if (peer) peer.destroy();
-        location.reload();
+        tutupSesiDanMatikan();
+        window.location.reload();
     });
 }
 
-function mulaiPanggilan() {
+function tutupSesiDanMatikan() {
+    hentikanNadaDering();
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (currentCall) currentCall.close();
+    if (activeConnection) activeConnection.close();
+    if (peer) peer.destroy();
+}
+
+function mulaiPanggilan(denganVideo) {
     if (!targetPeerId) return;
     mulaiSuaraBerderingPanggil();
 
     const call = peer.call(targetPeerId, localStream);
     handleActiveCall(call);
-
-    if (!activeConnection) {
-        const conn = peer.connect(targetPeerId);
-        setupDataConnection(conn);
-    }
+    bukaKoneksiChat(targetPeerId);
 }
 
 function handleActiveCall(call) {
@@ -167,7 +189,10 @@ function akhiriPanggilanUI() {
     currentCall = null;
     remoteStream = null;
     isMyVideoBig = false;
-    updateTampilanVideo();
+    
+    if (currentMode !== 'chat') {
+        updateTampilanVideo();
+    }
 
     document.getElementById('call-video-btn').style.display = 'inline-block';
     document.getElementById('call-audio-btn').style.display = 'inline-block';
@@ -175,24 +200,36 @@ function akhiriPanggilanUI() {
 }
 
 function updateTampilanVideo() {
+    if (currentMode === 'chat') return;
     const mainVideo = document.getElementById('main-video');
     const floatingVideo = document.getElementById('floating-video');
     const floatingLabel = document.getElementById('floating-label');
 
     if (isMyVideoBig) {
-        if (localStream) mainVideo.srcObject = localStream;
-        if (remoteStream) floatingVideo.srcObject = remoteStream;
-        floatingLabel.innerText = targetPeerId;
+        if (localStream && currentMode === 'video') mainVideo.srcObject = localStream;
+        mainVideo.muted = true;
+        if (remoteStream) {
+            floatingVideo.srcObject = remoteStream;
+            floatingLabel.innerText = targetPeerId;
+        }
     } else {
-        if (remoteStream) mainVideo.srcObject = remoteStream;
-        else if (localStream) mainVideo.srcObject = localStream;
-        if (localStream) floatingVideo.srcObject = localStream;
-        floatingLabel.innerText = "Anda";
+        if (remoteStream) {
+            mainVideo.srcObject = remoteStream;
+            mainVideo.muted = false;
+        } else if (localStream && currentMode === 'video') {
+            mainVideo.srcObject = localStream;
+            mainVideo.muted = true;
+        }
+        if (localStream && currentMode === 'video') {
+            floatingVideo.srcObject = localStream;
+            floatingVideo.muted = true;
+            floatingLabel.innerText = "Anda";
+        }
     }
 }
 
 window.tukarPosisiVideo = function() {
-    if (!remoteStream) return;
+    if (!remoteStream || currentMode === 'chat') return;
     isMyVideoBig = !isMyVideoBig;
     updateTampilanVideo();
 }
@@ -212,9 +249,10 @@ function kirimPesanChat() {
     if (activeConnection) {
         activeConnection.send(text);
     } else if (targetPeerId) {
-        const conn = peer.connect(targetPeerId);
-        setupDataConnection(conn);
-        setTimeout(() => conn.send(text), 500);
+        bukaKoneksiChat(targetPeerId);
+        setTimeout(() => {
+            if (activeConnection) activeConnection.send(text);
+        }, 500);
     }
     chatInput.value = '';
 }
@@ -224,18 +262,12 @@ function tampilkanPesanChat(sender, text, type) {
     if (chatMessages.innerHTML.includes('Belum ada pesan')) chatMessages.innerHTML = '';
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-msg ${type}`;
-    msgDiv.innerHTML = `<strong>${sender}</strong>: ${text}`;
+    msgDiv.innerHTML = `<strong>${sender}</strong>: ${text} <small>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>`;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-window.toggleChatMinimize = function() {
-    const chatSection = document.getElementById('chat-section');
-    const toggleBtn = document.getElementById('toggle-chat-btn');
-    chatSection.classList.toggle('minimized');
-    toggleBtn.innerText = chatSection.classList.contains('minimized') ? "[+] Tampilkan" : "[-] Sembunyikan";
-}
-
+let ringtoneInterval = null;
 function putarBipSuara(f1, f2) {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
