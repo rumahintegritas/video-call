@@ -62,6 +62,27 @@
         .btn-mode-2 { background-color: #17a2b8; }
         .btn-mode-chat { background-color: #ffc107; color: #000; }
 
+        /* Modal Panggilan Masuk */
+        #incoming-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #222;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 280px;
+        }
+        .modal-btn-group { margin-top: 15px; display: flex; justify-content: space-around; }
+        #accept-call-btn { background-color: #28a745; padding: 6px 12px; }
+        #reject-call-btn { background-color: #dc3545; padding: 6px 12px; }
+
         /* Workspace Tata Letak */
         .main-workspace {
             display: flex;
@@ -73,6 +94,7 @@
             padding-bottom: 5px;
         }
 
+        /* Area Video Utama (Bisa disembunyikan jika mode chat saja) */
         .video-container {
             flex: 2;
             position: relative;
@@ -138,6 +160,7 @@
             z-index: 10;
         }
         .media-btn { background-color: #444; }
+        .media-btn.active { background-color: #dc3545; }
 
         /* Panel Chat */
         .chat-section {
@@ -162,15 +185,26 @@
             font-weight: bold;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .chat-messages {
             flex: 1;
             padding: 6px;
             overflow-y: auto;
             font-size: 11px;
+            text-align: left;
             background: #181818;
             color: #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
+        .chat-msg { padding: 4px 6px; border-radius: 4px; max-width: 85%; word-break: break-word; }
+        .chat-msg.mine { background: #005c4b; align-self: flex-end; color: white; }
+        .chat-msg.theirs { background: #333; align-self: flex-start; color: white; }
+        .chat-msg small { display: block; font-size: 8px; color: #aaa; margin-top: 1px; }
         .chat-input-area {
             display: flex;
             padding: 5px;
@@ -184,46 +218,75 @@
 </head>
 <body>
 
+    <div id="incoming-modal">
+        <div class="modal-content">
+            <h3 id="incoming-title">Panggilan Masuk!</h3>
+            <p>Dari: <strong id="incoming-caller-id">...</strong></p>
+            <div class="modal-btn-group">
+                <button id="accept-call-btn">Terima</button>
+                <button id="reject-call-btn">Tolak</button>
+            </div>
+        </div>
+    </div>
+
     <div class="header-container">
-        <h2>Aplikasi P2P (Pratinjau Tampilan)</h2>
+        <h2>Aplikasi P2P (VC, Telepon, / Chat)</h2>
         <button id="exit-btn">Keluar</button>
     </div>
     
-    <!-- Contoh Panel Pemilihan Mode di Awal -->
+    <!-- Panel Pemilihan Mode di Awal -->
     <div class="top-panel" id="panel-pemilihan">
         <span><strong>Pilih Mode & Perangkat:</strong></span>
-        <button class="btn-mode-1">VC: 3Nberadik</button>
-        <button class="btn-mode-2">VC: 3Nkandung</button>
-        <button class="btn-mode-chat">Chat: 3Nberadik</button>
-        <button class="btn-mode-chat">Chat: 3Nkandung</button>
+        <button class="btn-mode-1" onclick="mulaiAplikasi('3Nberadik', '3Nkandung', 'video')">VC: 3Nberadik</button>
+        <button class="btn-mode-2" onclick="mulaiAplikasi('3Nkandung', '3Nberadik', 'video')">VC: 3Nkandung</button>
+        <button class="btn-mode-chat" onclick="mulaiAplikasi('3Nberadik', '3Nkandung', 'chat')">Chat: 3Nberadik</button>
+        <button class="btn-mode-chat" onclick="mulaiAplikasi('3Nkandung', '3Nberadik', 'chat')">Chat: 3Nkandung</button>
+    </div>
+
+    <!-- Panel Kontrol Setelah Masuk -->
+    <div class="top-panel" id="panel-kontrol" style="display:none;">
+        <span>ID Anda: <strong id="my-id">-</strong></span>
+        <span>Lawan: <strong id="target-id-display">-</strong></span>
+        <button id="call-video-btn" style="background:#28a745;">Panggil Video</button>
+        <button id="call-audio-btn" style="background:#17a2b8;">Panggil Suara</button>
+        <button id="hangup-btn" style="background:#dc3545; display:none;">Tutup</button>
     </div>
 
     <div class="main-workspace">
-        <!-- Area Video Utama -->
-        <div class="video-container">
-            <video class="video-main" autoplay playsinline></video>
-            <div class="video-floating">
-                <video autoplay muted playsinline></video>
-                <div class="video-label">Anda</div>
+        <!-- Area Video (Disembunyikan otomatis jika mode chat saja) -->
+        <div class="video-container" id="video-container-box">
+            <video id="main-video" class="video-main" autoplay playsinline></video>
+            
+            <div class="video-floating" id="floating-box" onclick="tukarPosisiVideo()" title="Klik tukar posisi">
+                <video id="floating-video" autoplay muted playsinline></video>
+                <div class="video-label" id="floating-label">Anda</div>
             </div>
+
             <div class="floating-controls">
-                <button class="media-btn">Mute</button>
-                <button class="media-btn">Kamera</button>
+                <button id="mute-btn" class="media-btn">Mute</button>
+                <button id="camera-btn" class="media-btn">Kamera</button>
+                <button id="switch-camera-btn" class="media-btn">Putar</button>
             </div>
         </div>
 
-        <!-- Bagian Chat Samping -->
-        <div class="chat-section">
-            <div class="chat-header">Obrolan Pesan P2P</div>
-            <div class="chat-messages">
-                <div style="color: #777; text-align: center; font-size: 10px;">Belum ada pesan</div>
+        <!-- Bagian Chat Samping / Full -->
+        <div class="chat-section" id="chat-section">
+            <div class="chat-header">
+                <span>Obrolan Pesan P2P</span>
             </div>
-            <div class="chat-input-area">
-                <input type="text" placeholder="Ketik pesan...">
-                <button>Kirim</button>
+            <div class="chat-body" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+                <div class="chat-messages" id="chat-messages">
+                    <div style="color: #777; text-align: center; font-size: 10px;">Belum ada pesan</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Ketik pesan...">
+                    <button id="send-chat-btn">Kirim</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
