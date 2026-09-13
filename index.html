@@ -46,6 +46,8 @@
             gap: 8px;
             align-items: center;
             font-size: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         input, button {
             padding: 4px 7px;
@@ -60,6 +62,16 @@
         #call-audio-btn { background-color: #17a2b8; }
         .media-btn { background-color: #444; }
         .media-btn.active { background-color: #dc3545; }
+
+        /* Tombol Pilihan ID Manual */
+        .id-selector-box {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            background: #333;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
 
         /* Modal Panggilan Masuk */
         #incoming-modal {
@@ -93,7 +105,6 @@
             padding-bottom: 5px;
         }
 
-        /* Area Video Utama */
         .video-container {
             flex: 2;
             position: relative;
@@ -113,7 +124,6 @@
             background: #111;
         }
 
-        /* Video Kecil Mengambang (Floating PiP) */
         .video-floating {
             position: absolute;
             top: 12px;
@@ -144,7 +154,6 @@
             border-radius: 3px;
         }
 
-        /* Kontrol Mengambang di Bawah */
         .floating-controls {
             position: absolute;
             bottom: 12px;
@@ -158,7 +167,6 @@
             z-index: 10;
         }
 
-        /* Panel Chat Samping */
         .chat-section {
             flex: 1;
             min-width: 220px;
@@ -237,15 +245,19 @@
     </div>
     
     <div class="top-panel">
-        <span>ID Anda: <strong id="my-id">Menghubungkan...</strong></span>
-        <span>Lawan: <strong id="target-id-display">...</strong></span>
-        <button id="call-video-btn">Panggil Video</button>
-        <button id="call-audio-btn">Panggil Suara</button>
+        <div class="id-selector-box">
+            <span>Pilih ID:</span>
+            <button onclick="mulaiAplikasi('3Nberadik', '3Nkandung')" style="background-color: #28a745;">3Nberadik</button>
+            <button onclick="mulaiAplikasi('3Nkandung', '3Nberadik')" style="background-color: #17a2b8;">3Nkandung</button>
+        </div>
+        <span>Status ID: <strong id="my-id">Belum dipilih</strong></span>
+        <span>Lawan: <strong id="target-id-display">-</strong></span>
+        <button id="call-video-btn" style="display:none;">Panggil Video</button>
+        <button id="call-audio-btn" style="display:none;">Panggil Suara</button>
         <button id="hangup-btn" style="background-color: #dc3545; display:none;">Tutup</button>
     </div>
 
     <div class="main-workspace">
-        <!-- Area Video Utama -->
         <div class="video-container">
             <video id="main-video" class="video-main" autoplay playsinline></video>
             
@@ -261,7 +273,6 @@
             </div>
         </div>
 
-        <!-- Bagian Chat Samping -->
         <div class="chat-section" id="chat-section">
             <div class="chat-header" onclick="toggleChatMinimize()">
                 <span>Obrolan Rapat</span>
