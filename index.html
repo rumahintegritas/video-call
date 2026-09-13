@@ -3,16 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Panggilan & Chat P2P</title>
+    <title>Aplikasi Panggilan P2P Gaya WhatsApp</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f0f2f5;
+            background-color: #111;
+            color: white;
             margin: 0;
             padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
         }
         .header-container {
             display: flex;
@@ -21,11 +25,11 @@
             width: 100%;
             max-width: 900px;
             margin-bottom: 5px;
-            padding: 0 5px;
+            z-index: 10;
         }
-        h2 { margin: 5px 0; font-size: 18px; color: #333; }
+        h2 { margin: 5px 0; font-size: 16px; }
         #exit-btn {
-            background-color: #343a40;
+            background-color: #dc3545;
             font-size: 12px;
             padding: 5px 10px;
             border-radius: 4px;
@@ -33,39 +37,30 @@
             border: none;
             cursor: pointer;
         }
-        #exit-btn:hover { background-color: #23272b; }
 
         .top-panel {
-            background: #fff;
-            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
             border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin-bottom: 10px;
             display: flex;
-            gap: 8px;
+            gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
-            justify-content: center;
-            font-size: 14px;
+            font-size: 13px;
+            z-index: 10;
         }
         input, button {
-            padding: 6px 10px;
-            font-size: 13px;
+            padding: 5px 8px;
+            font-size: 12px;
             border-radius: 4px;
-            border: 1px solid #ccc;
-        }
-        button {
-            background-color: #007bff;
+            border: 1px solid #555;
+            background: #222;
             color: white;
-            cursor: pointer;
-            border: none;
         }
-        button:hover { background-color: #0056b3; }
+        button { background-color: #007bff; cursor: pointer; border: none; }
         #call-video-btn { background-color: #28a745; }
-        #call-video-btn:hover { background-color: #218838; }
         #call-audio-btn { background-color: #17a2b8; }
-        #call-audio-btn:hover { background-color: #138496; }
-        .media-btn { background-color: #6c757d; font-size: 12px; padding: 5px 8px; }
+        .media-btn { background-color: #444; }
         .media-btn.active { background-color: #dc3545; }
 
         /* Modal Panggilan Masuk */
@@ -73,160 +68,160 @@
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.8);
             z-index: 1000;
             justify-content: center;
             align-items: center;
         }
         .modal-content {
-            background: white;
+            background: #222;
             padding: 20px;
             border-radius: 8px;
             text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             max-width: 280px;
         }
         .modal-btn-group { margin-top: 15px; display: flex; justify-content: space-around; }
-        #accept-call-btn { background-color: #28a745; padding: 8px 15px; }
-        #reject-call-btn { background-color: #dc3545; padding: 8px 15px; }
+        #accept-call-btn { background-color: #28a745; padding: 6px 12px; }
+        #reject-call-btn { background-color: #dc3545; padding: 6px 12px; }
 
-        /* Layout Utama Simetris (2 Pengguna) */
+        /* Workspace Tata Letak ala WhatsApp */
         .main-workspace {
             display: flex;
             width: 100%;
             max-width: 900px;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
+            flex: 1;
+            gap: 10px;
+            position: relative;
+            min-height: 0;
         }
 
-        .video-section {
+        /* Area Video Utama (Layar Penuh / Background) */
+        .video-container {
             flex: 2;
-            min-width: 280px;
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
             display: flex;
-            flex-direction: column;
-            gap: 10px;
+            justify-content: center;
+            align-items: center;
         }
 
-        .video-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 10px;
+        /* Video Utama yang sedang tampil besar */
+        .video-main {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #111;
         }
-        .video-card {
+
+        /* Video Kecil yang Tumpang Tindih (Floating PiP) di Pojok */
+        .video-floating {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 110px;
+            height: 150px;
             background: #222;
             border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            z-index: 5;
+            transition: transform 0.2s;
         }
-        .video-card span {
+        .video-floating:hover {
+            transform: scale(1.05);
+        }
+        .video-floating video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-label {
             position: absolute;
-            top: 6px;
+            bottom: 4px;
             left: 6px;
             background: rgba(0, 0, 0, 0.6);
             color: white;
-            padding: 2px 6px;
-            font-size: 11px;
+            padding: 1px 4px;
+            font-size: 9px;
             border-radius: 3px;
-            z-index: 10;
-        }
-        video {
-            width: 100%;
-            height: 170px;
-            object-fit: cover;
-            background-color: #111;
-        }
-        .card-controls {
-            padding: 6px;
-            background: #333;
-            width: 100%;
-            box-sizing: border-box;
-            display: flex;
-            justify-content: center;
-            gap: 4px;
         }
 
-        /* Panel Chat Samping dengan Fitur Minimize */
+        /* Kontrol Video di Bagian Bawah Layar */
+        .floating-controls {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 15px;
+            border-radius: 30px;
+            z-index: 10;
+        }
+
+        /* Panel Chat Samping (Bisa Diminimize) */
         .chat-section {
             flex: 1;
-            min-width: 240px;
-            max-width: 280px;
-            background: white;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-width: 220px;
+            max-width: 260px;
+            background: #222;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
-            height: 380px;
+            height: 100%;
+            box-sizing: border-box;
             transition: height 0.3s ease;
         }
         .chat-section.minimized {
-            height: 36px;
+            height: 34px;
             overflow: hidden;
         }
         .chat-header {
             background: #007bff;
             color: white;
             padding: 6px 10px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
         }
-        #toggle-chat-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 12px;
-            cursor: pointer;
-            padding: 0;
-        }
-        .chat-body {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            overflow: hidden;
-        }
-        .chat-section.minimized .chat-body {
-            display: none;
-        }
+        #toggle-chat-btn { background: none; border: none; color: white; font-size: 11px; cursor: pointer; }
+        .chat-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        .chat-section.minimized .chat-body { display: none; }
         .chat-messages {
             flex: 1;
             padding: 8px;
             overflow-y: auto;
-            font-size: 12px;
+            font-size: 11px;
             text-align: left;
-            background: #fafafa;
+            background: #181818;
+            color: #ddd;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 4px;
         }
-        .chat-msg {
-            padding: 5px 8px;
-            border-radius: 5px;
-            max-width: 85%;
-            word-break: break-word;
-        }
-        .chat-msg.mine { background: #dcf8c6; align-self: flex-end; }
-        .chat-msg.theirs { background: #e2e2e2; align-self: flex-start; }
-        .chat-msg small { display: block; font-size: 9px; color: #666; margin-top: 1px; }
+        .chat-msg { padding: 5px 8px; border-radius: 5px; max-width: 85%; word-break: break-word; }
+        .chat-msg.mine { background: #005c4b; align-self: flex-end; color: white; }
+        .chat-msg.theirs { background: #333; align-self: flex-start; color: white; }
+        .chat-msg small { display: block; font-size: 8px; color: #aaa; margin-top: 1px; }
         .chat-input-area {
             display: flex;
             padding: 6px;
-            border-top: 1px solid #ddd;
-            background: #fff;
-            border-bottom-left-radius: 6px;
-            border-bottom-right-radius: 6px;
+            background: #2a2a2a;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
         }
-        .chat-input-area input { flex: 1; padding: 5px; font-size: 12px; }
-        .chat-input-area button { padding: 5px 8px; font-size: 12px; margin-left: 3px; }
+        .chat-input-area input { flex: 1; padding: 5px; font-size: 11px; background: #111; color: white; }
+        .chat-input-area button { padding: 5px 8px; font-size: 11px; margin-left: 3px; }
     </style>
 </head>
 <body>
@@ -243,7 +238,7 @@
     </div>
 
     <div class="header-container">
-        <h2>Aplikasi Panggilan P2P (2 Pengguna)</h2>
+        <h2>Aplikasi Panggilan P2P (Gaya WhatsApp)</h2>
         <button id="exit-btn">Keluar</button>
     </div>
     
@@ -256,22 +251,26 @@
     </div>
 
     <div class="main-workspace">
-        <!-- Bagian Video / Audio -->
-        <div class="video-section">
-            <div class="video-grid" id="video-grid">
-                <div class="video-card" id="my-video-card">
-                    <span>Anda (<strong id="label-my-id">...</strong>)</span>
-                    <video id="local-video" autoplay muted playsinline></video>
-                    <div class="card-controls">
-                        <button id="mute-btn" class="media-btn">Mute</button>
-                        <button id="camera-btn" class="media-btn">Kamera</button>
-                        <button id="switch-camera-btn" class="media-btn">Putar</button>
-                    </div>
-                </div>
+        <!-- Area Video Utama (Tampilan ala WhatsApp) -->
+        <div class="video-container">
+            <!-- Layar Utama (Secara default menampilkan lawan bicara jika ada, atau diri sendiri) -->
+            <video id="main-video" class="video-main" autoplay playsinline></video>
+            
+            <!-- Layar Kecil Mengambang (Floating PiP) -->
+            <div class="video-floating" id="floating-box" onclick="tukarPosisiVideo()" title="Klik untuk tukar posisi">
+                <video id="floating-video" autoplay muted playsinline></video>
+                <div class="video-label" id="floating-label">Anda</div>
+            </div>
+
+            <!-- Kontrol Mengambang di Bawah Video -->
+            <div class="floating-controls">
+                <button id="mute-btn" class="media-btn">Mute</button>
+                <button id="camera-btn" class="media-btn">Kamera</button>
+                <button id="switch-camera-btn" class="media-btn">Putar</button>
             </div>
         </div>
 
-        <!-- Bagian Obrolan / Chat dengan Tombol Minimize -->
+        <!-- Bagian Chat Samping -->
         <div class="chat-section" id="chat-section">
             <div class="chat-header" onclick="toggleChatMinimize()">
                 <span>Obrolan Rapat</span>
@@ -279,7 +278,7 @@
             </div>
             <div class="chat-body">
                 <div class="chat-messages" id="chat-messages">
-                    <div style="color: #888; text-align: center; font-size: 11px;">Belum ada pesan</div>
+                    <div style="color: #777; text-align: center; font-size: 10px;">Belum ada pesan</div>
                 </div>
                 <div class="chat-input-area">
                     <input type="text" id="chat-input" placeholder="Ketik pesan...">
