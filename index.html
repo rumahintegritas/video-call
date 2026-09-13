@@ -54,26 +54,53 @@
             overflow: hidden;
         }
         video { width: 100%; height: 100%; object-fit: cover; }
+        
         .chat-section {
             flex: 1;
             background: #222;
             border-radius: 8px;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         .chat-messages {
             flex: 1;
-            padding: 8px;
+            padding: 10px;
             overflow-y: auto;
             font-size: 12px;
             background: #181818;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
+
+        /* Desain Gelembung Chat Ala WhatsApp */
+        .chat-bubble {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+        .chat-bubble.mine {
+            background-color: #005c4b; /* Hijau WhatsApp */
+            color: white;
+            align-self: flex-end; /* Posisi di Kanan */
+            border-bottom-right-radius: 2px;
+        }
+        .chat-bubble.theirs {
+            background-color: #333333; /* Abu-abu gelap */
+            color: white;
+            align-self: flex-start; /* Posisi di Kiri */
+            border-bottom-left-radius: 2px;
+        }
+
         .chat-input-area {
             display: flex;
             padding: 8px;
             background: #2a2a2a;
         }
-        .chat-input-area input { flex: 1; padding: 6px; background: #111; color: white; border: 1px solid #555; }
+        .chat-input-area input { flex: 1; padding: 6px; background: #111; color: white; border: 1px solid #555; border-radius: 4px; }
         .chat-input-area button { background: #007bff; margin-left: 4px; }
     </style>
 </head>
@@ -100,7 +127,9 @@
 
         <div class="chat-section" id="chat-section">
             <div style="background: #007bff; padding: 8px; font-weight: bold; font-size: 12px;">Chat Room</div>
-            <div class="chat-messages" id="chat-messages">Belum ada pesan</div>
+            <div class="chat-messages" id="chat-messages">
+                <div style="color: #777; text-align: center;">Belum ada pesan</div>
+            </div>
             <div class="chat-input-area">
                 <input type="text" id="chat-input" placeholder="Ketik pesan...">
                 <button id="send-chat-btn">Kirim</button>
