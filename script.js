@@ -9,63 +9,45 @@ let targetPeerId = "";
 let ringtoneInterval = null;
 let isMyVideoBig = false;
 
-const myIdDisplay = document.getElementById('my-id');
-const targetIdDisplay = document.getElementById('target-id-display');
-const callVideoBtn = document.getElementById('call-video-btn');
-const callAudioBtn = document.getElementById('call-audio-btn');
-const hangupBtn = document.getElementById('hangup-btn');
-const muteBtn = document.getElementById('mute-btn');
-const cameraBtn = document.getElementById('camera-btn');
-const switchCameraBtn = document.getElementById('switch-camera-btn');
-const exitBtn = document.getElementById('exit-btn');
-
-const mainVideo = document.getElementById('main-video');
-const floatingVideo = document.getElementById('floating-video');
-const floatingLabel = document.getElementById('floating-label');
-
-const incomingModal = document.getElementById('incoming-modal');
-const incomingCallerId = document.getElementById('incoming-caller-id');
-const acceptCallBtn = document.getElementById('accept-call-btn');
-const rejectCallBtn = document.getElementById('reject-call-btn');
-
-const chatMessages = document.getElementById('chat-messages');
-const chatInput = document.getElementById('chat-input');
-const sendChatBtn = document.getElementById('send-chat-btn');
-
-// Langsung muat kamera dan buat tombol pilihan ID instan di layar jika belum terpilih
+// Jalankan segera saat dokumen siap
 document.addEventListener("DOMContentLoaded", () => {
-    muatKameraDanTampilkanPilihan();
+    const myIdDisplay = document.getElementById('my-id');
+    
+    // Tampilkan tombol pilihan ID secara instan di layar agar tidak macet
+    myIdDisplay.innerHTML = `
+        <span style="color: #ffc107;">Pilih Perangkat:</span> 
+        <button onclick="mulaiAplikasi('3Nberadik', '3Nkandung')" style="background:#28a745; color:white; padding:4px 10px; margin-left:5px; cursor:pointer; border:none; border-radius:4px;">1: 3Nberadik</button>
+        <button onclick="mulaiAplikasi('3Nkandung', '3Nberadik')" style="background:#17a2b8; color:white; padding:4px 10px; margin-left:5px; cursor:pointer; border:none; border-radius:4px;">2: 3Nkandung</button>
+    `;
 });
 
-function muatKameraDanTampilkanPilihan() {
-    myIdDisplay.innerText = "Meminta izin kamera...";
-    
+// Fungsi utama saat tombol ID diklik oleh pengguna
+window.mulaiAplikasi = function(myId, targetId) {
+    targetPeerId = targetId;
+    document.getElementById('target-id-display').innerText = targetPeerId;
+    document.getElementById('my-id').innerText = `Menghubungkan ${myId}...`;
+
+    // 1. Ambil izin kamera terlebih dahulu
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })
         .then(stream => {
             localStream = stream;
-            updateTampilanVideo();
-            tampilkanTombolPilihID();
+            inisialisasiVideoLokal();
+            inisambungkanPeerJS(myId);
         })
         .catch(err => {
-            console.warn("Izin kamera ditolak/gagal:", err);
-            tampilkanTombolPilihID(); // Tetap lanjut agar pengguna tetap bisa memilih ID
+            console.warn("Kamera ditolak/tidak ada, lanjut mode audio:", err);
+            inisambungkanPeerJS(myId);
         });
 }
 
-function tampilkanTombolPilihID() {
-    myIdDisplay.innerHTML = `
-        <span style="color: #ffc107;">Pilih Perangkat:</span> 
-        <button onclick="mulaiSebagai('3Nberadik', '3Nkandung')" style="background:#28a745; padding:3px 8px; margin-left:5px; cursor:pointer;">1: 3Nberadik</button>
-        <button onclick="mulaiSebagai('3Nkandung', '3Nberadik')" style="background:#17a2b8; padding:3px 8px; margin-left:5px; cursor:pointer;">2: 3Nkandung</button>
-    `;
+function inisialisasiVideoLokal() {
+    if (!localStream) return;
+    const floatingVideo = document.getElementById('floating-video');
+    floatingVideo.srcObject = localStream;
+    floatingVideo.muted = true;
 }
 
-// Fungsi yang dipanggil saat tombol pilihan ID diklik
-window.mulaiSebagai = function(myId, targetId) {
-    targetPeerId = targetId;
-    targetIdDisplay.innerText = targetPeerId;
-    myIdDisplay.innerText = `Menghubungkan ${myId}...`;
-
+function inisambungkanPeerJS(myId) {
     peer = new Peer(myId, {
         host: '0.peerjs.com',
         port: 443,
@@ -73,27 +55,32 @@ window.mulaiSebagai = function(myId, targetId) {
     });
 
     peer.on('open', (id) => {
-        myIdDisplay.innerText = id;
+        document.getElementById('my-id').innerText = id;
         setupListeners();
-        alert(`Berhasil masuk sebagai: ${id}`);
+        alert(`Berhasil terhubung sebagai: ${id}`);
     });
 
     peer.on('error', (err) => {
         console.warn('PeerJS Error:', err);
         if (err.type === 'unavailable-id') {
-            alert(`ID "${myId}" sedang digunakan di tab/perangkat lain! Tutup tab tersebut.`);
+            alert(`ID "${myId}" sedang digunakan di tab/perangkat lain! Tutup tab tersebut dan refresh.`);
             location.reload();
         } else {
-            myIdDisplay.innerText = "Koneksi Gagal, Refresh Ulang";
+            document.getElementById('my-id').innerText = "Koneksi Gagal, Refresh Ulang";
         }
     });
 }
 
 function updateTampilanVideo() {
-    if (!localStream) return;
+    const mainVideo = document.getElementById('main-video');
+    const floatingVideo = document.getElementById('floating-video');
+    const floatingLabel = document.getElementById('floating-label');
+
     if (isMyVideoBig) {
-        mainVideo.srcObject = localStream;
-        mainVideo.muted = true;
+        if (localStream) {
+            mainVideo.srcObject = localStream;
+            mainVideo.muted = true;
+        }
         if (remoteStream) {
             floatingVideo.srcObject = remoteStream;
             floatingLabel.innerText = targetPeerId;
@@ -102,13 +89,15 @@ function updateTampilanVideo() {
         if (remoteStream) {
             mainVideo.srcObject = remoteStream;
             mainVideo.muted = false;
-        } else {
+        } else if (localStream) {
             mainVideo.srcObject = localStream;
             mainVideo.muted = true;
         }
-        floatingVideo.srcObject = localStream;
-        floatingVideo.muted = true;
-        floatingLabel.innerText = "Anda";
+        if (localStream) {
+            floatingVideo.srcObject = localStream;
+            floatingVideo.muted = true;
+            floatingLabel.innerText = "Anda";
+        }
     }
 }
 
@@ -121,8 +110,8 @@ window.tukarPosisiVideo = function() {
 function setupListeners() {
     peer.on('call', (call) => {
         pendingCall = call;
-        incomingCallerId.innerText = call.peer;
-        incomingModal.style.display = 'flex';
+        document.getElementById('incoming-caller-id').innerText = call.peer;
+        document.getElementById('incoming-modal').style.display = 'flex';
         mulaiNadaDeringPenerima();
     });
 
@@ -130,29 +119,29 @@ function setupListeners() {
         setupDataConnection(conn);
     });
 
-    acceptCallBtn.onclick = () => {
+    document.getElementById('accept-call-btn').onclick = () => {
         if (pendingCall) {
             hentikanNadaDering();
             pendingCall.answer(localStream);
             handleActiveCall(pendingCall);
-            incomingModal.style.display = 'none';
+            document.getElementById('incoming-modal').style.display = 'none';
             pendingCall = null;
         }
     };
 
-    rejectCallBtn.onclick = () => {
+    document.getElementById('reject-call-btn').onclick = () => {
         if (pendingCall) {
             hentikanNadaDering();
             pendingCall.close();
-            incomingModal.style.display = 'none';
+            document.getElementById('incoming-modal').style.display = 'none';
             pendingCall = null;
         }
     };
 
-    callVideoBtn.addEventListener('click', () => mulaiPanggilan(true));
-    callAudioBtn.addEventListener('click', () => mulaiPanggilan(false));
+    document.getElementById('call-video-btn').addEventListener('click', () => mulaiPanggilan(true));
+    document.getElementById('call-audio-btn').addEventListener('click', () => mulaiPanggilan(false));
 
-    hangupBtn.addEventListener('click', () => {
+    document.getElementById('hangup-btn').addEventListener('click', () => {
         hentikanNadaDering();
         if (currentCall) {
             currentCall.close();
@@ -160,34 +149,33 @@ function setupListeners() {
         }
     });
 
-    sendChatBtn.addEventListener('click', kirimPesanChat);
-    chatInput.addEventListener('keypress', (e) => {
+    document.getElementById('send-chat-btn').addEventListener('click', kirimPesanChat);
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') kirimPesanChat();
     });
 
-    muteBtn.addEventListener('click', () => {
+    document.getElementById('mute-btn').addEventListener('click', () => {
         if (!localStream) return;
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack) {
             audioTrack.enabled = !audioTrack.enabled;
-            muteBtn.innerText = audioTrack.enabled ? "Mute" : "Unmute";
-            muteBtn.classList.toggle('active', !audioTrack.enabled);
+            document.getElementById('mute-btn').innerText = audioTrack.enabled ? "Mute" : "Unmute";
+            document.getElementById('mute-btn').classList.toggle('active', !audioTrack.enabled);
         }
     });
 
-    cameraBtn.addEventListener('click', () => {
+    document.getElementById('camera-btn').addEventListener('click', () => {
         if (!localStream) return;
         const videoTrack = localStream.getVideoTracks()[0];
         if (videoTrack) {
             videoTrack.enabled = !videoTrack.enabled;
-            cameraBtn.innerText = videoTrack.enabled ? "Kamera" : "Buka";
-            cameraBtn.classList.toggle('active', !videoTrack.enabled);
+            document.getElementById('camera-btn').innerText = videoTrack.enabled ? "Kamera" : "Buka";
+            document.getElementById('camera-btn').classList.toggle('active', !videoTrack.enabled);
         }
     });
 
-    switchCameraBtn.addEventListener('click', () => {
+    document.getElementById('switch-camera-btn').addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
-        switchCameraBtn.innerText = useFrontCamera ? "Putar" : "Depan";
         navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? 'user' : 'environment' }, audio: true })
             .then(stream => {
                 if (localStream) localStream.getTracks().forEach(t => t.stop());
@@ -196,7 +184,7 @@ function setupListeners() {
             });
     });
 
-    exitBtn.addEventListener('click', () => {
+    document.getElementById('exit-btn').addEventListener('click', () => {
         tutupSesiDanMatikan();
         window.location.reload();
     });
@@ -230,9 +218,9 @@ function mulaiPanggilan(denganVideo) {
 function handleActiveCall(call) {
     hentikanNadaDering();
     currentCall = call;
-    callVideoBtn.style.display = 'none';
-    callAudioBtn.style.display = 'none';
-    hangupBtn.style.display = 'inline-block';
+    document.getElementById('call-video-btn').style.display = 'none';
+    document.getElementById('call-audio-btn').style.display = 'none';
+    document.getElementById('hangup-btn').style.display = 'inline-block';
 
     call.on('stream', (stream) => {
         remoteStream = stream;
@@ -250,9 +238,9 @@ function akhiriPanggilanUI() {
     isMyVideoBig = false;
     updateTampilanVideo();
 
-    callVideoBtn.style.display = 'inline-block';
-    callAudioBtn.style.display = 'inline-block';
-    hangupBtn.style.display = 'none';
+    document.getElementById('call-video-btn').style.display = 'inline-block';
+    document.getElementById('call-audio-btn').style.display = 'inline-block';
+    document.getElementById('hangup-btn').style.display = 'none';
 }
 
 function setupDataConnection(conn) {
@@ -262,6 +250,7 @@ function setupDataConnection(conn) {
 }
 
 function kirimPesanChat() {
+    const chatInput = document.getElementById('chat-input');
     const text = chatInput.value.trim();
     if (!text) return;
     tampilkanPesanChat('Anda', text, 'mine');
@@ -277,6 +266,7 @@ function kirimPesanChat() {
 }
 
 function tampilkanPesanChat(sender, text, type) {
+    const chatMessages = document.getElementById('chat-messages');
     if (chatMessages.innerHTML.includes('Belum ada pesan')) chatMessages.innerHTML = '';
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-msg ${type}`;
