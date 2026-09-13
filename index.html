@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Video Call Sederhana</title>
+    <title>Aplikasi Video Call & Meeting P2P</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             background-color: #f4f4f9;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
         }
         .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 950px;
+            max-width: 1200px;
             margin: 0 auto 10px auto;
             padding: 0 10px;
         }
@@ -28,33 +28,18 @@
         #exit-btn:hover {
             background-color: #23272b;
         }
-        .video-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        .video-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        video {
-            width: 100%;
-            max-width: 450px;
-            height: 340px;
-            background-color: #333;
+        .controls {
+            margin: 10px 0;
+            background: #fff;
+            padding: 10px;
             border-radius: 8px;
-            object-fit: cover;
-        }
-        .controls, .media-controls {
-            margin-top: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-block;
         }
         input, button {
-            padding: 10px;
-            font-size: 16px;
-            margin: 5px;
+            padding: 9px;
+            font-size: 14px;
+            margin: 4px;
             border-radius: 5px;
             border: 1px solid #ccc;
         }
@@ -66,27 +51,149 @@
         button:hover {
             background-color: #0056b3;
         }
-        #cancel-btn {
-            background-color: #dc3545;
-            display: none;
+        #call-btn {
+            background-color: #28a745;
         }
-        #cancel-btn:hover {
-            background-color: #a71d2a;
+        #call-btn:hover {
+            background-color: #218838;
         }
         .media-btn {
             background-color: #6c757d;
-            font-size: 14px;
-            padding: 8px 12px;
+            font-size: 13px;
+            padding: 6px 10px;
         }
         .media-btn.active {
-            background-color: #28a745;
+            background-color: #dc3545;
+        }
+        #share-screen-btn {
+            background-color: #17a2b8;
+        }
+        #share-screen-btn:hover {
+            background-color: #138496;
+        }
+
+        /* Modal Panggilan Masuk */
+        #incoming-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            max-width: 320px;
+            width: 90%;
+        }
+        .modal-content h3 { margin-top: 0; color: #333; }
+        .modal-btn-group { margin-top: 20px; display: flex; justify-content: space-around; }
+        #accept-call-btn { background-color: #28a745; border: none; padding: 10px 20px; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
+        #reject-call-btn { background-color: #dc3545; border: none; padding: 10px 20px; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
+
+        /* Layout Utama Ruang Rapat */
+        .meeting-layout {
+            display: flex;
+            flex-direction: column;
+            max-width: 1200px;
+            margin: 15px auto;
+            gap: 15px;
+        }
+
+        #presentation-container {
+            display: none;
+            width: 100%;
+            background: #111;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        #presentation-container.active {
+            display: block;
+        }
+        #presentation-video {
+            width: 100%;
+            max-height: 550px;
+            object-fit: contain;
+            background: #000;
+        }
+        .presentation-header {
+            background: #222;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 14px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+        .video-card {
+            background: #222;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .video-card span {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 3px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        video {
+            width: 100%;
+            height: 260px;
+            object-fit: cover;
+            background-color: #111;
+        }
+        .card-controls {
+            padding: 8px;
+            background: #333;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
         }
     </style>
 </head>
 <body>
 
+    <!-- Modal Panggilan Masuk -->
+    <div id="incoming-modal">
+        <div class="modal-content">
+            <h3>Panggilan Masuk!</h3>
+            <p>Dari Peserta: <strong id="incoming-caller-id">...</strong></p>
+            <div class="modal-btn-group">
+                <button id="accept-call-btn">Terima</button>
+                <button id="reject-call-btn">Tolak</button>
+            </div>
+        </div>
+    </div>
+
     <div class="header-container">
-        <h2>Aplikasi Video Call P2P</h2>
+        <h2>Aplikasi Video Call & Paparan P2P</h2>
         <button id="exit-btn">Keluar Aplikasi</button>
     </div>
     
@@ -95,23 +202,27 @@
     </div>
 
     <div class="controls">
-        <input type="text" id="peer-id-input" placeholder="Masukkan ID Teman">
-        <button id="call-btn">Panggil</button>
-        <button id="cancel-btn">Tutup Panggilan</button>
+        <input type="text" id="peer-id-input" placeholder="Masukkan ID Peserta">
+        <button id="call-btn">Hubungkan</button>
+        <button id="share-screen-btn" class="media-btn">Bagikan Layar (Paparan)</button>
     </div>
 
-    <div class="video-container">
-        <div class="video-box">
-            <h3>Video Anda</h3>
-            <video id="local-video" autoplay muted playsinline></video>
-            <div class="media-controls">
-                <button id="mute-btn" class="media-btn">Mute Suara</button>
-                <button id="camera-btn" class="media-btn">Matikan Kamera</button>
-            </div>
+    <div class="meeting-layout">
+        <div id="presentation-container">
+            <div class="presentation-header" id="presentation-title">Sedang Menampilkan Paparan...</div>
+            <video id="presentation-video" autoplay playsinline></video>
         </div>
-        <div class="video-box">
-            <h3>Video Lawan Bicara</h3>
-            <video id="remote-video" autoplay playsinline></video>
+
+        <div class="video-grid" id="video-grid">
+            <div class="video-card" id="my-video-card">
+                <span>Anda (<strong id="label-my-id">...</strong>)</span>
+                <video id="local-video" autoplay muted playsinline></video>
+                <div class="card-controls">
+                    <button id="mute-btn" class="media-btn">Mute Suara</button>
+                    <button id="camera-btn" class="media-btn">Matikan Kamera</button>
+                    <button id="switch-camera-btn" class="media-btn">Putar Kamera</button>
+                </div>
+            </div>
         </div>
     </div>
 
