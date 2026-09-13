@@ -200,10 +200,11 @@
         <button id="btn-chat" style="background: #ffc107; color:#000;">Mulai Chat Saja</button>
     </div>
 
-    <!-- Panel Kontrol Setelah Masuk (Menampilkan ID Anda & Kolom ID Lawan) -->
+    <!-- Panel Kontrol Setelah Masuk -->
     <div class="top-panel" id="panel-kontrol" style="display:none;">
         <span>ID Anda: <strong id="my-id" style="color: #ffc107; cursor:pointer;" title="Klik untuk salin">...</strong></span>
-        <input type="text" id="target-id-input" placeholder="Masukkan ID Lawan...">
+        <span>Lawan: <strong id="target-id-display" style="color: #28a745;">Menunggu...</strong></span>
+        <input type="text" id="target-id-input" placeholder="ID Lawan..." style="width: 90px;">
         <button id="connect-btn" style="background: #17a2b8;">Hubungkan</button>
         <button id="hangup-btn" style="background:#dc3545;">Keluar</button>
     </div>
