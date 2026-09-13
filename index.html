@@ -143,7 +143,6 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            word-break: break-all;
         }
         .chat-bubble {
             max-width: 80%;
@@ -173,6 +172,7 @@
         .chat-input-area input { flex: 1; padding: 5px; background: #111; color: white; border: 1px solid #555; border-radius: 4px; font-size: 11px; min-width: 0; }
         .chat-input-area button { background: #007bff; margin-left: 4px; padding: 5px 8px; font-size: 11px; }
 
+        /* Penyesuaian Responsif untuk HP / Portrait */
         @media (max-width: 768px) {
             body { padding: 2px; }
             .main-workspace { flex-direction: column; }
@@ -193,7 +193,7 @@
         <button id="btn-chat" style="background: #ffc107; color:#000;">Buat Ruang Chat Saja</button>
     </div>
 
-    <!-- Panel Kontrol Setelah Masuk (Menampilkan Tombol Salin Tautan) -->
+    <!-- Panel Kontrol Setelah Masuk -->
     <div class="top-panel" id="panel-kontrol" style="display:none;">
         <span>Status: <strong id="status-koneksi" style="color: #ffc107;">Membuat Ruang...</strong></span>
         <button id="copy-link-btn" style="background: #17a2b8;">Salin Tautan Ruang</button>
@@ -222,7 +222,7 @@
                 <div style="color: #777; text-align: center; font-size: 10px;">Belum ada pesan</div>
             </div>
             <div class="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Ketik pesan atau paste tautan...">
+                <input type="text" id="chat-input" placeholder="Ketik pesan...">
                 <button id="send-chat-btn">Kirim</button>
             </div>
         </div>
