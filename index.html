@@ -34,14 +34,22 @@
             box-sizing: border-box;
             flex-shrink: 0;
         }
-        button {
-            padding: 6px 12px;
+        button, input {
+            padding: 5px 8px;
             font-size: 11px;
             border-radius: 4px;
             border: none;
+        }
+        button {
             cursor: pointer;
             color: white;
             font-weight: bold;
+            background: #007bff;
+        }
+        input {
+            background: #222;
+            color: white;
+            border: 1px solid #555;
         }
         
         /* Workspace Utama */
@@ -172,7 +180,6 @@
         .chat-input-area input { flex: 1; padding: 5px; background: #111; color: white; border: 1px solid #555; border-radius: 4px; font-size: 11px; min-width: 0; }
         .chat-input-area button { background: #007bff; margin-left: 4px; padding: 5px 8px; font-size: 11px; }
 
-        /* Penyesuaian Responsif untuk HP / Portrait */
         @media (max-width: 768px) {
             body { padding: 2px; }
             .main-workspace { flex-direction: column; }
@@ -186,18 +193,19 @@
 </head>
 <body>
 
-    <!-- Panel Pemilihan Mode di Awal -->
+    <!-- Panel Input Kode Unik Sendiri & Lawan -->
     <div class="top-panel" id="panel-pemilihan">
-        <span><strong>Pilih Mode Masuk:</strong></span>
-        <button id="btn-vc" style="background: #28a745;">Buat Ruang Video Call</button>
-        <button id="btn-chat" style="background: #ffc107; color:#000;">Buat Ruang Chat Saja</button>
+        <span>ID Saya: <input type="text" id="my-custom-id" placeholder="Cth: 3Nberadik" style="width: 90px;"></span>
+        <span>ID Lawan: <input type="text" id="target-id-input" placeholder="Cth: 3Nkandung" style="width: 90px;"></span>
+        <button id="btn-start-vc" style="background: #28a745;">Mulai (Video Call)</button>
+        <button id="btn-start-chat" style="background: #ffc107; color:#000;">Mulai (Chat Saja)</button>
     </div>
 
     <!-- Panel Kontrol Setelah Masuk -->
     <div class="top-panel" id="panel-kontrol" style="display:none;">
-        <span>Status: <strong id="status-koneksi" style="color: #ffc107;">Membuat Ruang...</strong></span>
-        <button id="copy-link-btn" style="background: #17a2b8;">Salin Tautan Ruang</button>
-        <button id="hangup-btn" style="background:#dc3545;">Keluar</button>
+        <span>ID Anda: <strong id="display-my-id" style="color: #ffc107;">...</strong></span>
+        <span>Lawan: <strong id="target-id-display" style="color: #28a745;">Menunggu...</strong></span>
+        <button id="hangup-btn" style="background:#dc3545;">Keluar (Bersihkan ID)</button>
     </div>
 
     <div class="main-workspace">
