@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btn-chat-1').onclick = () => mulai('3Nberadik', '3Nkandung', false);
     document.getElementById('btn-chat-2').onclick = () => mulai('3Nkandung', '3Nberadik', false);
 
-    // Tombol Keluar: Mematikan kamera/koneksi lalu mengarahkannya ke tab kosong (about:blank)
     document.getElementById('hangup-btn').onclick = () => {
         tutupSesiDanKeluar();
     };
@@ -66,7 +65,6 @@ function tutupSesiDanKeluar() {
     if (peer) {
         peer.destroy();
     }
-    // Mengarahkan ke halaman/tab kosong browser
     window.location.href = "about:blank";
 }
 
@@ -110,7 +108,14 @@ function muatMediaKamera(pakaiVideo, callback) {
 }
 
 function hubungkanPeer(myId, pakaiVideo) {
-    peer = new Peer(myId);
+    // Menambahkan konfigurasi debug dan port standar agar lebih stabil di server publik
+    peer = new Peer(myId, {
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
+        debug: 1
+    });
 
     peer.on('open', (id) => {
         const conn = peer.connect(targetPeerId);
@@ -136,8 +141,15 @@ function hubungkanPeer(myId, pakaiVideo) {
     });
 
     peer.on('error', (err) => {
-        alert("ID sedang digunakan di tab/perangkat lain!");
-        location.reload();
+        if (err.type === 'unavailable-id') {
+            // Berikan jeda atau opsi coba lagi otomatis saat ID masih terkunci di server
+            setTimeout(() => {
+                alert(`ID "${myId}" sedang dilepaskan oleh server. Silakan klik OK lalu coba masuk kembali.`);
+                location.reload();
+            }, 500);
+        } else {
+            console.warn("Peer error: ", err);
+        }
     });
 }
 
