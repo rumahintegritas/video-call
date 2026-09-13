@@ -7,42 +7,11 @@ let useFrontCamera = true;
 let isMyVideoBig = false;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Cek apakah halaman dibuka melalui tautan undangan (?room=...)
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomToJoin = urlParams.get('room');
+    document.getElementById('btn-start-vc').onclick = () => inisialisasiDenganIdKustom(true);
+    document.getElementById('btn-start-chat').onclick = () => inisialisasiDenganIdKustom(false);
 
-    if (roomToJoin) {
-        document.getElementById('panel-pemilihan').style.display = 'none';
-        document.getElementById('panel-kontrol').style.display = 'flex';
-        document.getElementById('status-koneksi').innerText = "Menghubungkan ke Ruang...";
-        
-        targetPeerId = roomToJoin;
-        muatMediaKamera(true, () => {
-            inisialisasiPeerOtomatis(true, true);
-        });
-    } else {
-        document.getElementById('btn-vc').onclick = () => mulaiBuatRuang(true);
-        document.getElementById('btn-chat').onclick = () => mulaiBuatRuang(false);
-    }
-
-    // Tombol Salin Tautan Ruang
-    document.getElementById('copy-link-btn').onclick = () => {
-        const myId = peer ? peer.id : "";
-        if (!myId) {
-            alert("Ruang sedang disiapkan, tunggu sebentar...");
-            return;
-        }
-        const roomLink = window.location.origin + window.location.pathname + "?room=" + myId;
-        navigator.clipboard.writeText(roomLink).then(() => {
-            alert("Tautan berhasil disalin!\n\nTempel (Paste) link ini ke kolom chat di bawah dan kirim ke lawan bicara Anda.");
-        });
-    };
-
-    // Tombol Keluar / Tutup Aplikasi
     document.getElementById('hangup-btn').onclick = () => {
-        if (localStream) localStream.getTracks().forEach(t => t.stop());
-        if (peer) peer.destroy();
-        window.location.href = "about:blank"; // Mengarah ke tab kosong browser
+        tutupSesiDanKeluar();
     };
 
     document.getElementById('send-chat-btn').onclick = kirimPesan;
@@ -50,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.key === 'Enter') kirimPesan();
     });
 
-    // Kontrol Mute Suara
+    // Tombol Kontrol Media
     document.getElementById('mute-btn').onclick = () => {
         if (!localStream) return;
         const audioTrack = localStream.getAudioTracks()[0];
@@ -62,7 +31,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // Kontrol Matikan/Nyalakan Kamera
     document.getElementById('camera-btn').onclick = () => {
         if (!localStream) return;
         const videoTrack = localStream.getVideoTracks()[0];
@@ -74,7 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // Tombol Putar Kamera Depan/Belakang (HP)
     document.getElementById('switch-camera-btn').onclick = () => {
         useFrontCamera = !useFrontCamera;
         muatMediaKamera(true, () => {
@@ -89,17 +56,28 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 });
 
-function mulaiBuatRuang(pakaiVideo) {
+function inisialisasiDenganIdKustom(pakaiVideo) {
+    const customId = document.getElementById('my-custom-id').value.trim();
+    targetPeerId = document.getElementById('target-id-input').value.trim();
+
+    if (!customId) {
+        alert("Mohon masukkan ID Anda terlebih dahulu!");
+        return;
+    }
+
     document.getElementById('panel-pemilihan').style.display = 'none';
     document.getElementById('panel-kontrol').style.display = 'flex';
-    document.getElementById('status-koneksi').innerText = "Membuat Ruang...";
+    document.getElementById('display-my-id').innerText = customId;
+    if (targetPeerId) {
+        document.getElementById('target-id-display').innerText = targetPeerId;
+    }
 
     if (!pakaiVideo) {
         document.getElementById('video-box').style.display = 'none';
-        inisialisasiPeerOtomatis(false, false);
+        buatPeerCustom(customId, false);
     } else {
         muatMediaKamera(true, () => {
-            inisialisasiPeerOtomatis(true, false);
+            buatPeerCustom(customId, true);
         });
     }
 }
@@ -119,13 +97,14 @@ function muatMediaKamera(pakaiVideo, callback) {
             if (callback) callback();
         })
         .catch(err => {
-            alert("Gagal mengakses kamera/mikrofon! Pastikan izin browser diizinkan.");
+            alert("Gagal mengakses kamera/mikrofon! Periksa izin browser.");
             window.location.reload();
         });
 }
 
-function inisialisasiPeerOtomatis(pakaiVideo, sebagaiPengikut) {
-    peer = new Peer({
+function buatPeerCustom(myId, pakaiVideo) {
+    // Membuat koneksi peer dengan ID kustom
+    peer = new Peer(myId, {
         host: '0.peerjs.com',
         port: 443,
         path: '/',
@@ -133,45 +112,71 @@ function inisialisasiPeerOtomatis(pakaiVideo, sebagaiPengikut) {
     });
 
     peer.on('open', (id) => {
-        if (sebagaiPengikut) {
-            document.getElementById('status-koneksi').innerText = "Terhubung!";
-            
-            const conn = peer.connect(targetPeerId);
-            aturKoneksiData(conn);
-
-            if (pakaiVideo && localStream) {
-                setTimeout(() => {
-                    const call = peer.call(targetPeerId, localStream);
-                    call.on('stream', (stream) => {
-                        remoteStream = stream;
-                        updateTampilanVideo();
-                    });
-                }, 800);
-            }
-        } else {
-            document.getElementById('status-koneksi').innerText = "Ruang Siap! (Silakan Salin Tautan)";
+        console.log("Berhasil mendaftarkan ID:", id);
+        // Jika kolom ID lawan sudah diisi sebelum klik mulai, langsung sambungkan
+        if (targetPeerId) {
+            hubungkanOtomatis(pakaiVideo);
         }
     });
 
+    // Antisipasi jika ID sedang dipakai / nyangkut di server
+    peer.on('error', (err) => {
+        if (err.type === 'unavailable-id') {
+            alert(`ID "${myId}" sedang dianggap aktif oleh server.\n\nTrik: Klik tombol "Keluar (Bersihkan ID)" atau tunggu 10 detik, lalu coba lagi.`);
+            window.location.reload();
+        } else {
+            console.warn("Peer error: ", err);
+        }
+    });
+
+    // Menerima panggilan data/chat masuk
     peer.on('connection', (conn) => {
         targetPeerId = conn.peer;
-        document.getElementById('status-koneksi').innerText = "Terhubung dengan Lawan!";
+        document.getElementById('target-id-display').innerText = targetPeerId;
+        document.getElementById('target-id-input').value = targetPeerId;
         aturKoneksiData(conn);
     });
 
+    // Menerima panggilan video masuk
     peer.on('call', (call) => {
         targetPeerId = call.peer;
-        document.getElementById('status-koneksi').innerText = "Terhubung dengan Lawan!";
+        document.getElementById('target-id-display').innerText = targetPeerId;
+        document.getElementById('target-id-input').value = targetPeerId;
         call.answer(localStream);
         call.on('stream', (stream) => {
             remoteStream = stream;
             updateTampilanVideo();
         });
     });
+}
 
-    peer.on('error', (err) => {
-        console.warn("Peer error: ", err);
-    });
+function hubungkanOtomatis(pakaiVideo) {
+    if (!targetPeerId) return;
+
+    // Koneksi Data / Chat
+    const conn = peer.connect(targetPeerId);
+    aturKoneksiData(conn);
+
+    // Koneksi Video Call
+    if (pakaiVideo && localStream) {
+        setTimeout(() => {
+            const call = peer.call(targetPeerId, localStream);
+            call.on('stream', (stream) => {
+                remoteStream = stream;
+                updateTampilanVideo();
+            });
+        }, 500);
+    }
+}
+
+function tutupSesiDanKeluar() {
+    if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+    }
+    if (peer) {
+        peer.destroy(); // Perintah utama untuk menghapus ID dari server agar tidak nyangkut
+    }
+    window.location.href = "about:blank"; // Menutup sesi bersih ke halaman kosong
 }
 
 function updateTampilanVideo() {
@@ -184,7 +189,7 @@ function updateTampilanVideo() {
         mainVideo.muted = true;
         if (remoteStream) {
             floatingVideo.srcObject = remoteStream;
-            floatingLabel.innerText = "Lawan";
+            floatingLabel.innerText = targetPeerId || "Lawan";
         }
     } else {
         if (remoteStream) {
