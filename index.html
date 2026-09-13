@@ -64,7 +64,8 @@
             object-fit: cover;
             background: #111;
         }
-        /* Video Kecil Mengambang (PiP) untuk Kamera Sendiri */
+        
+        /* Video Kecil Mengambang (PiP) yang bisa diklik untuk tukar posisi */
         .video-floating {
             position: absolute;
             top: 12px;
@@ -76,6 +77,7 @@
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0,0,0,0.6);
             border: 2px solid rgba(255,255,255,0.4);
+            cursor: pointer;
             z-index: 5;
         }
         .video-floating video {
@@ -93,6 +95,21 @@
             font-size: 9px;
             border-radius: 3px;
         }
+
+        /* Tombol Kontrol Kamera Tambahan di Bawah Video */
+        .floating-controls {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 6px 12px;
+            border-radius: 20px;
+            z-index: 10;
+        }
+        .media-btn { background-color: #444; font-size: 11px; padding: 4px 8px; }
 
         /* Panel Chat Samping */
         .chat-section {
@@ -122,7 +139,7 @@
             line-height: 1.4;
         }
         .chat-bubble.mine {
-            background-color: #005c4b; /* Hijau WhatsApp */
+            background-color: #005c4b;
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -159,13 +176,19 @@
     </div>
 
     <div class="main-workspace">
-        <!-- Area Video Utama (Lawan) dan Floating (Anda) -->
         <div class="video-container" id="video-box">
+            <!-- Video Utama -->
             <video id="main-video" class="video-main" autoplay playsinline></video>
             
-            <div class="video-floating" id="floating-box">
+            <!-- Video Kecil Mengambang (Klik untuk tukar posisi besar/kecil) -->
+            <div class="video-floating" id="floating-box" onclick="tukarPosisiVideo()" title="Klik untuk tukar posisi">
                 <video id="floating-video" autoplay muted playsinline></video>
-                <div class="video-label">Anda</div>
+                <div class="video-label" id="floating-label">Anda</div>
+            </div>
+
+            <!-- Tombol Ganti Kamera Depan/Belakang -->
+            <div class="floating-controls" id="video-controls" style="display:none;">
+                <button id="switch-camera-btn" class="media-btn">Putar Kamera</button>
             </div>
         </div>
 
