@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         targetPeerId = inputId;
+        document.getElementById('target-id-display').innerText = targetPeerId;
         hubungkanKeLawan(true);
     };
 
@@ -65,7 +66,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     };
 
-    // Fitur klik untuk salin ID sendiri
     document.getElementById('my-id').onclick = () => {
         const idText = document.getElementById('my-id').innerText;
         navigator.clipboard.writeText(idText).then(() => {
@@ -112,7 +112,6 @@ function muatMediaKamera(pakaiVideo, callback) {
 }
 
 function buatPeerBaru(pakaiVideo) {
-    // Tanpa parameter ID, PeerJS otomatis membuat ID acak yang unik dan bebas bentrok
     peer = new Peer({
         host: '0.peerjs.com',
         port: 443,
@@ -124,15 +123,19 @@ function buatPeerBaru(pakaiVideo) {
         document.getElementById('my-id').innerText = id;
     });
 
+    // Saat lawan menghubungi via chat
     peer.on('connection', (conn) => {
         targetPeerId = conn.peer;
         document.getElementById('target-id-input').value = targetPeerId;
+        document.getElementById('target-id-display').innerText = targetPeerId; // Tampilkan ID lawan
         aturKoneksiData(conn);
     });
 
+    // Saat lawan menghubungi via Video Call
     peer.on('call', (call) => {
         targetPeerId = call.peer;
         document.getElementById('target-id-input').value = targetPeerId;
+        document.getElementById('target-id-display').innerText = targetPeerId; // Tampilkan ID lawan
         call.answer(localStream);
         call.on('stream', (stream) => {
             remoteStream = stream;
@@ -148,20 +151,15 @@ function buatPeerBaru(pakaiVideo) {
 function hubungkanKeLawan(pakaiVideo) {
     if (!targetPeerId) return;
 
-    // 1. Hubungkan koneksi data chat
     const conn = peer.connect(targetPeerId);
     aturKoneksiData(conn);
 
-    // 2. Hubungkan panggilan video jika dalam mode VC
     if (pakaiVideo && localStream) {
         const call = peer.call(targetPeerId, localStream);
         call.on('stream', (stream) => {
             remoteStream = stream;
             updateTampilanVideo();
         });
-        alert("Menghubungkan panggilan ke " + targetPeerId);
-    } else {
-        alert("Terhubung ke chat " + targetPeerId);
     }
 }
 
